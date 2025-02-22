@@ -1,6 +1,33 @@
 # Chatty
 
-Chatty is a command-line interface for chatting with Ollama's LLMs (Large Language Models) with streaming responses and conversation history.
+Chatty is a command-line interface for chatting with Ollama's LLMs (Large Language Models) with streaming responses, conversation history, and customizable AI personalities.
+
+## Features
+
+- Real-time streaming responses
+- Persistent conversation history
+- Multiple AI personalities to choose from
+- Customizable appearance and behavior
+- Clear and readable output format
+- Colored output (configurable)
+- Consistent text margins
+
+## Available Assistants
+
+Chatty comes with several pre-configured AI personalities:
+
+1. **Ghostly** (Default) - A friendly and ethereal presence, helping with a gentle touch
+2. **Sage** - A wise mentor focused on deep understanding and guidance
+3. **Nova** - A tech-savvy assistant with a passion for innovation
+4. **Terra** - An eco-conscious assistant promoting sustainability
+5. **Atlas** - A structured assistant focusing on organization and planning
+
+Each assistant comes with:
+
+- Unique personality and communication style
+- Custom emoji and color scheme
+- Specialized system message
+- Distinct area of expertise
 
 ## Prerequisites
 
@@ -38,71 +65,72 @@ You can send messages in two ways:
 1. Without quotes (for simple messages):
 
 ```bash
-go run main.go How are you doing today?
+./bin/chatty How are you doing today?
 ```
 
 2. With quotes (required for messages containing special characters):
 
 ```bash
-go run main.go "You're an AI, right?"
-go run main.go "What's the meaning of life, the universe & everything?"
+./bin/chatty "What's the meaning of life?"
 ```
-
-The program will:
-
-- Stream the response in real-time
-- Save the conversation history automatically
-- Maintain context between messages
-- Format output with consistent spacing and colors
 
 ### Special Commands
 
-Clear conversation history:
-
 ```bash
-go run main.go --clear
+# Clear conversation history
+./bin/chatty --clear
+
+# List available assistants
+./bin/chatty --list
+
+# Switch to a different assistant
+./bin/chatty --select Sage
 ```
-
-### Features
-
-- Real-time streaming responses
-- Persistent conversation history
-- System message context
-- Clear and readable output format
-- Colored output (configurable)
-- Consistent text margins
 
 ### Configuration
 
-All configuration is done through constants in the code:
+All configuration is done through constants and the assistant configuration system:
 
 ```go
-// Appearance
-topMargin   = 1       // Blank lines before response
-bottomMargin = 1      // Blank lines after response
-useColors = true      // Enable/disable colored output
-assistantLabel = "Assistant"  // Label shown before responses
-
-// Colors (RGB format)
-assistantLabelColor = "\033[38;2;79;195;247m"   // #4FC3F7 (light blue)
-assistantTextColor  = "\033[38;2;255;255;255m"  // #FFFFFF (white)
-
-// AI Behavior
-systemMessage = "You are a helpful AI assistant. Be concise and clear in your responses."
-
-// Ollama API
+// Core configuration
+ollamaModel   = "llama3.2"               // Model to use for chat
 ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
-ollamaURLPath = "/api/chat"               // API endpoint path
-ollamaModel   = "llama3.2"                // Model to use for chat
+ollamaURLPath = "/api/chat"              // API endpoint path
+historyFile   = "chat_history.json"      // File to store chat history
+
+// Display settings
+useEmoji     = true    // Enable/disable emoji display
+useColors    = true    // Enable/disable colored output
+topMargin    = 1      // Blank lines before response
+bottomMargin = 1      // Blank lines after response
 ```
+
+Each assistant's configuration includes:
+
+- Name
+- System message template
+- Emoji
+- Label color
+- Text color
+- Description
 
 ### Chat History
 
-The chat history is automatically saved in `~/.chatty/chat_history.json`. The history includes:
+Each assistant maintains their own chat history file in the `~/.chatty/` directory:
 
-- A system message that sets the AI's behavior
-- All user messages and AI responses in chronological order
-- Context preservation between conversations
+- Files are named `chat_history_<assistant>.json` (e.g., `chat_history_ghostly.json`)
+- Each history includes:
+  - A system message that sets the AI's behavior
+  - All user messages and AI responses in chronological order
+  - Context preservation between conversations
+- When switching assistants:
+  - The program automatically loads the correct history file
+  - If no history exists for an assistant, a new one is created
+  - Each assistant maintains their own conversation context
+- When adding new assistants to the code:
+  - A new history file is automatically created on first use
+  - No manual setup is required
+  - Each new assistant starts with a fresh conversation
 
 ## Error Handling
 
@@ -112,6 +140,7 @@ The program handles various error cases:
 - Ollama server connection issues
 - File system errors
 - JSON parsing errors
+- Invalid assistant selection
 
 ## Building
 
@@ -140,4 +169,8 @@ Then you can run it directly:
 - Responses are streamed in real-time as they're generated
 - All configuration can be easily modified through constants
 - Colors can be disabled by setting `useColors = false`
+- Emoji can be disabled by setting `useEmoji = false`
+- Assistant personalities can be switched at any time
 - The API endpoint can be changed to connect to remote Ollama instances
+- Each assistant maintains their unique personality and style
+- System messages are automatically updated when switching assistants

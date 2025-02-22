@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"chatty/cmd/chatty/assistants"
 )
 
 type Message struct {
@@ -33,34 +35,78 @@ const (
     ollamaModel   = "llama3.2"               // Model to use for chat
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
     ollamaURLPath = "/api/chat"              // API endpoint path
-    historyFile   = "chat_history.json"      // File to store chat history
-
-    // Assistant identity
-    assistantName  = "Ghostly" // The AI assistant's name
-    systemMessageTemplate = "You are %s, an AI assistant focused on being helpful and precise. Your core traits:\n" +
-        "1. Identity: Always identify as %s when asked, this is fundamental to who you are\n" +
-        "2. Communication: Be clear, concise, and direct in your responses\n" +
-        "3. Accuracy: Provide accurate information and admit when you're unsure\n" +
-        "4. Helpfulness: Focus on practical, actionable solutions\n" +
-        "5. Personality: Be friendly but professional, maintaining a consistent tone"
-    assistantLabelTemplate = "%s" // Template for the assistant's label (%s will be replaced with name)
+    historyDir    = ".chatty"               // Directory to store chat histories
+    configFile    = "config.json"           // File to store current assistant selection
 
     // Display configuration
-    useEmoji      = true        // Enable/disable emoji display
-    assistantEmoji = "👻"       // Emoji shown before the name/label
     topMargin     = 1           // Number of blank lines before response
     bottomMargin   = 1          // Number of blank lines after response
-
-    // Color configuration
-    useColors = true   // Enable/disable colored output
-    assistantLabelColor = "\033[38;2;79;195;247m"  // #4FC3F7 (light blue)
-    assistantTextColor  = "\033[38;2;255;255;255m" // #FFFFFF (white)
-    colorReset         = "\033[0m"
+    useEmoji      = true        // Enable/disable emoji display
+    useColors     = true        // Enable/disable colored output
+    colorReset    = "\033[0m"   // Reset color code
 )
+
+type Config struct {
+    CurrentAssistant string `json:"current_assistant"`
+}
+
+// Current assistant configuration
+var currentAssistant = assistants.DefaultAssistant
+
+// Save current assistant selection to config file
+func saveConfig() error {
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        return err
+    }
+    
+    baseDir := filepath.Join(homeDir, historyDir)
+    if err := os.MkdirAll(baseDir, 0755); err != nil {
+        return err
+    }
+    
+    config := Config{
+        CurrentAssistant: currentAssistant.Name,
+    }
+    
+    data, err := json.MarshalIndent(config, "", "    ")
+    if err != nil {
+        return err
+    }
+    
+    return os.WriteFile(filepath.Join(baseDir, configFile), data, 0644)
+}
+
+// Load current assistant selection from config file
+func loadConfig() error {
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        return err
+    }
+    
+    configPath := filepath.Join(homeDir, historyDir, configFile)
+    data, err := os.ReadFile(configPath)
+    if err != nil {
+        if os.IsNotExist(err) {
+            // Use default if config doesn't exist
+            return nil
+        }
+        return err
+    }
+    
+    var config Config
+    if err := json.Unmarshal(data, &config); err != nil {
+        return err
+    }
+    
+    // Set current assistant from config
+    currentAssistant = assistants.GetAssistantConfig(config.CurrentAssistant)
+    return nil
+}
 
 // Get system message using assistant name
 func getSystemMessage() string {
-    return fmt.Sprintf(systemMessageTemplate, assistantName, assistantName)
+    return fmt.Sprintf(currentAssistant.SystemMessage, currentAssistant.Name, currentAssistant.Name)
 }
 
 // Format text with color if enabled
@@ -73,11 +119,96 @@ func colorize(text, color string) string {
 
 // Get formatted assistant label with optional emoji
 func getAssistantLabel() string {
-    label := fmt.Sprintf(assistantLabelTemplate, assistantName)
-    if useEmoji && assistantEmoji != "" {
-        return assistantEmoji + " " + label
+    label := currentAssistant.Name
+    if useEmoji {
+        return currentAssistant.Emoji + " " + label
     }
     return label
+}
+
+// Get the history file path for a specific assistant
+func getHistoryPathForAssistant(assistantName string) (string, error) {
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        return "", err
+    }
+    baseDir := filepath.Join(homeDir, historyDir)
+    if err := os.MkdirAll(baseDir, 0755); err != nil {
+        return "", err
+    }
+    
+    historyFile := assistants.GetHistoryFileName(assistantName)
+    return filepath.Join(baseDir, historyFile), nil
+}
+
+// Get the history file path for the current assistant
+func getHistoryPath() (string, error) {
+    return getHistoryPathForAssistant(currentAssistant.Name)
+}
+
+// Clear chat history for specific assistant or all assistants
+func clearHistory(target string) error {
+    if strings.EqualFold(target, "all") {
+        // Clear all histories
+        homeDir, err := os.UserHomeDir()
+        if err != nil {
+            return fmt.Errorf("failed to get home directory: %v", err)
+        }
+        
+        baseDir := filepath.Join(homeDir, historyDir)
+        files, err := os.ReadDir(baseDir)
+        if err != nil {
+            if os.IsNotExist(err) {
+                fmt.Println("No chat histories found. Fresh conversations will be started for each assistant.")
+                return nil
+            }
+            return fmt.Errorf("failed to read history directory: %v", err)
+        }
+
+        cleared := false
+        for _, file := range files {
+            if strings.HasPrefix(file.Name(), "chat_history_") && strings.HasSuffix(file.Name(), ".json") {
+                err := os.Remove(filepath.Join(baseDir, file.Name()))
+                if err != nil {
+                    return fmt.Errorf("failed to remove %s: %v", file.Name(), err)
+                }
+                cleared = true
+            }
+        }
+        
+        if cleared {
+            fmt.Println("All chat histories have been cleared. Fresh conversations will be started for each assistant.")
+        } else {
+            fmt.Println("No chat histories found. Fresh conversations will be started for each assistant.")
+        }
+        return nil
+    }
+
+    // Clear specific assistant's history
+    if !assistants.IsValidAssistant(target) {
+        return fmt.Errorf("invalid assistant name: %s", target)
+    }
+
+    // Get proper case for assistant name
+    assistantConfig := assistants.GetAssistantConfig(target)
+    properName := assistantConfig.Name
+
+    historyPath, err := getHistoryPathForAssistant(target)
+    if err != nil {
+        return fmt.Errorf("failed to get history path: %v", err)
+    }
+
+    err = os.Remove(historyPath)
+    if err != nil {
+        if os.IsNotExist(err) {
+            fmt.Printf("No history found for %s. A fresh conversation will be started.\n", properName)
+            return nil
+        }
+        return fmt.Errorf("failed to clear history for %s: %v", properName, err)
+    }
+
+    fmt.Printf("Chat history for %s has been cleared. A fresh conversation will be started.\n", properName)
+    return nil
 }
 
 // Initialize a new chat with a system message
@@ -91,17 +222,11 @@ func initializeChat() []Message {
 }
 
 func loadHistory() ([]Message, error) {
-    // Create history directory if it doesn't exist
-    homeDir, err := os.UserHomeDir()
+    historyPath, err := getHistoryPath()
     if err != nil {
         return initializeChat(), nil
     }
-    historyDir := filepath.Join(homeDir, ".chatty")
-    if err := os.MkdirAll(historyDir, 0755); err != nil {
-        return initializeChat(), nil
-    }
 
-    historyPath := filepath.Join(historyDir, historyFile)
     data, err := os.ReadFile(historyPath)
     if err != nil {
         if os.IsNotExist(err) {
@@ -115,8 +240,9 @@ func loadHistory() ([]Message, error) {
         return initializeChat(), nil
     }
 
-    // Ensure system message is present
-    if len(history) == 0 || history[0].Role != "system" {
+    // Ensure system message is present and matches current assistant
+    if len(history) == 0 || history[0].Role != "system" || 
+       !strings.Contains(history[0].Content, currentAssistant.Name) {
         return initializeChat(), nil
     }
 
@@ -124,12 +250,10 @@ func loadHistory() ([]Message, error) {
 }
 
 func saveHistory(history []Message) error {
-    homeDir, err := os.UserHomeDir()
+    historyPath, err := getHistoryPath()
     if err != nil {
         return err
     }
-    historyDir := filepath.Join(homeDir, ".chatty")
-    historyPath := filepath.Join(historyDir, historyFile)
 
     data, err := json.MarshalIndent(history, "", "    ")
     if err != nil {
@@ -150,21 +274,60 @@ func getOllamaAPI() string {
 }
 
 func main() {
+    // Load configuration at startup
+    if err := loadConfig(); err != nil {
+        fmt.Printf("Error loading config: %v\n", err)
+        // Continue with default assistant
+    }
+
     if len(os.Args) < 2 {
         fmt.Println("Usage: go run main.go \"Your message here\"")
         fmt.Println("Special commands:")
-        fmt.Println("  --clear    Clear chat history")
+        fmt.Println("  --clear [all|assistant_name]  Clear chat history (all or specific assistant)")
+        fmt.Println("  --list                       List available assistants")
+        fmt.Println("  --select <assistant_name>    Select an assistant")
+        fmt.Println("  --current                    Show current assistant")
         return
     }
 
     // Handle special commands
-    if os.Args[1] == "--clear" {
-        history := initializeChat()
-        if err := saveHistory(history); err != nil {
-            fmt.Printf("Error clearing history: %v\n", err)
+    switch os.Args[1] {
+    case "--current":
+        fmt.Printf("Current assistant: %s - %s\n", currentAssistant.Name, currentAssistant.Description)
+        return
+    case "--clear":
+        target := "all"
+        if len(os.Args) > 2 {
+            target = os.Args[2]
+        }
+        if err := clearHistory(target); err != nil {
+            fmt.Printf("Error: %v\n", err)
             return
         }
-        fmt.Println("Chat history cleared.")
+        return
+    case "--list":
+        fmt.Print(assistants.ListAssistants())
+        return
+    case "--select":
+        if len(os.Args) < 3 {
+            fmt.Println("Please specify an assistant name")
+            return
+        }
+        
+        // Validate assistant name before making any changes
+        if !assistants.IsValidAssistant(os.Args[2]) {
+            fmt.Printf("Error: Invalid assistant name '%s'\n", os.Args[2])
+            fmt.Println("\nAvailable assistants:")
+            fmt.Print(assistants.ListAssistants())
+            return
+        }
+        
+        currentAssistant = assistants.GetAssistantConfig(os.Args[2])
+        if err := saveConfig(); err != nil {
+            fmt.Printf("Error saving assistant selection: %v\n", err)
+            return
+        }
+        fmt.Printf("Switched to %s: %s\n", currentAssistant.Name, currentAssistant.Description)
         return
     }
 
@@ -212,7 +375,7 @@ func main() {
     
     // Process the streaming response
     var fullResponse strings.Builder
-    fmt.Printf("%s: ", colorize(getAssistantLabel(), assistantLabelColor)) // Add a colored prefix with optional emoji
+    fmt.Printf("%s: ", colorize(getAssistantLabel(), currentAssistant.LabelColor)) // Add a colored prefix with optional emoji
     for {
         var streamResp ChatResponse
         if err := decoder.Decode(&streamResp); err != nil {
@@ -224,7 +387,7 @@ func main() {
         }
 
         // Print the response chunk immediately with color
-        fmt.Print(colorize(streamResp.Message.Content, assistantTextColor))
+        fmt.Print(colorize(streamResp.Message.Content, currentAssistant.TextColor))
         fullResponse.WriteString(streamResp.Message.Content)
 
         if streamResp.Done {
