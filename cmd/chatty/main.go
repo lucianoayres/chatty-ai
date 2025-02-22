@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"chatty/cmd/chatty/assistants"
 )
@@ -38,13 +39,65 @@ const (
     historyDir    = ".chatty"               // Directory to store chat histories
     configFile    = "config.json"           // File to store current assistant selection
 
+    // API timeouts
+    apiTimeout    = 30 * time.Second       // Timeout for API requests
+    
     // Display configuration
     topMargin     = 1           // Number of blank lines before response
     bottomMargin   = 1          // Number of blank lines after response
     useEmoji      = true        // Enable/disable emoji display
     useColors     = true        // Enable/disable colored output
     colorReset    = "\033[0m"   // Reset color code
+    
+    // Animation configuration
+    frameDelay   = 200          // Milliseconds between animation frames
+    
+    // Test configuration
+    testAnimationDelay = false  // Enable/disable artificial delay for testing animation
+    testDelayDuration = 30      // Delay duration in seconds when testAnimationDelay is true
 )
+
+// Animation control
+type Animation struct {
+    stopChan chan bool
+}
+
+// Start the jumping dots animation
+func startAnimation() *Animation {
+    anim := &Animation{
+        stopChan: make(chan bool),
+    }
+    
+    // Start animation in background
+    go func() {
+        frames := []string{"   ", ".  ", ".. ", "..."}
+        frameIndex := 0
+        
+        for {
+            select {
+            case <-anim.stopChan:
+                return
+            default:
+                // Clear line and print current frame
+                fmt.Printf("\r%s%s", colorize(getAssistantLabel(), currentAssistant.LabelColor), frames[frameIndex])
+                
+                // Move to next frame
+                frameIndex = (frameIndex + 1) % len(frames)
+                
+                time.Sleep(time.Millisecond * frameDelay)
+            }
+        }
+    }()
+    
+    return anim
+}
+
+// Stop the animation
+func (a *Animation) stopAnimation() {
+    a.stopChan <- true
+    // Clear the animation and prepare for response
+    fmt.Printf("\r%s", colorize(getAssistantLabel(), currentAssistant.LabelColor))
+}
 
 type Config struct {
     CurrentAssistant string `json:"current_assistant"`
@@ -106,7 +159,7 @@ func loadConfig() error {
 
 // Get system message using assistant name
 func getSystemMessage() string {
-    return fmt.Sprintf(currentAssistant.SystemMessage, currentAssistant.Name, currentAssistant.Name)
+    return currentAssistant.GetFullSystemMessage()
 }
 
 // Format text with color if enabled
@@ -121,9 +174,9 @@ func colorize(text, color string) string {
 func getAssistantLabel() string {
     label := currentAssistant.Name
     if useEmoji {
-        return currentAssistant.Emoji + " " + label
+        return currentAssistant.Emoji + " " + label + ": "
     }
-    return label
+    return label + ": "
 }
 
 // Get the history file path for a specific assistant
@@ -146,10 +199,70 @@ func getHistoryPath() (string, error) {
     return getHistoryPathForAssistant(currentAssistant.Name)
 }
 
-// Clear chat history for specific assistant or all assistants
+// Cache for chat histories
+var historyCache = make(map[string][]Message)
+
+// loadHistory loads chat history with caching
+func loadHistory() ([]Message, error) {
+    // Check cache first
+    if history, exists := historyCache[currentAssistant.Name]; exists {
+        return history, nil
+    }
+
+    historyPath, err := getHistoryPath()
+    if err != nil {
+        return initializeChat(), nil
+    }
+
+    data, err := os.ReadFile(historyPath)
+    if err != nil {
+        if os.IsNotExist(err) {
+            history := initializeChat()
+            historyCache[currentAssistant.Name] = history
+            return history, nil
+        }
+        return initializeChat(), nil
+    }
+
+    var history []Message
+    if err := json.Unmarshal(data, &history); err != nil {
+        history = initializeChat()
+        historyCache[currentAssistant.Name] = history
+        return history, nil
+    }
+
+    // Ensure system message is present and matches current assistant
+    if len(history) == 0 || history[0].Role != "system" || 
+       !strings.Contains(history[0].Content, currentAssistant.Name) {
+        history = initializeChat()
+    }
+
+    // Cache the loaded history
+    historyCache[currentAssistant.Name] = history
+    return history, nil
+}
+
+// saveHistory saves chat history and updates cache
+func saveHistory(history []Message) error {
+    // Update cache
+    historyCache[currentAssistant.Name] = history
+
+    historyPath, err := getHistoryPath()
+    if err != nil {
+        return err
+    }
+
+    data, err := json.MarshalIndent(history, "", "    ")
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(historyPath, data, 0644)
+}
+
+// clearHistory clears chat history and cache
 func clearHistory(target string) error {
     if strings.EqualFold(target, "all") {
-        // Clear all histories
+        // Clear all histories and cache
         homeDir, err := os.UserHomeDir()
         if err != nil {
             return fmt.Errorf("failed to get home directory: %v", err)
@@ -159,6 +272,8 @@ func clearHistory(target string) error {
         files, err := os.ReadDir(baseDir)
         if err != nil {
             if os.IsNotExist(err) {
+                // Clear cache
+                historyCache = make(map[string][]Message)
                 fmt.Println("No chat histories found. Fresh conversations will be started for each assistant.")
                 return nil
             }
@@ -176,6 +291,9 @@ func clearHistory(target string) error {
             }
         }
         
+        // Clear cache
+        historyCache = make(map[string][]Message)
+        
         if cleared {
             fmt.Println("All chat histories have been cleared. Fresh conversations will be started for each assistant.")
         } else {
@@ -192,6 +310,9 @@ func clearHistory(target string) error {
     // Get proper case for assistant name
     assistantConfig := assistants.GetAssistantConfig(target)
     properName := assistantConfig.Name
+
+    // Clear cache for this assistant
+    delete(historyCache, properName)
 
     historyPath, err := getHistoryPathForAssistant(target)
     if err != nil {
@@ -221,47 +342,6 @@ func initializeChat() []Message {
     }
 }
 
-func loadHistory() ([]Message, error) {
-    historyPath, err := getHistoryPath()
-    if err != nil {
-        return initializeChat(), nil
-    }
-
-    data, err := os.ReadFile(historyPath)
-    if err != nil {
-        if os.IsNotExist(err) {
-            return initializeChat(), nil
-        }
-        return initializeChat(), nil
-    }
-
-    var history []Message
-    if err := json.Unmarshal(data, &history); err != nil {
-        return initializeChat(), nil
-    }
-
-    // Ensure system message is present and matches current assistant
-    if len(history) == 0 || history[0].Role != "system" || 
-       !strings.Contains(history[0].Content, currentAssistant.Name) {
-        return initializeChat(), nil
-    }
-
-    return history, nil
-}
-
-func saveHistory(history []Message) error {
-    historyPath, err := getHistoryPath()
-    if err != nil {
-        return err
-    }
-
-    data, err := json.MarshalIndent(history, "", "    ")
-    if err != nil {
-        return err
-    }
-    return os.WriteFile(historyPath, data, 0644)
-}
-
 func printMargin(count int) {
     for i := 0; i < count; i++ {
         fmt.Println()
@@ -271,6 +351,23 @@ func printMargin(count int) {
 // Get the full Ollama API URL
 func getOllamaAPI() string {
     return ollamaBaseURL + ollamaURLPath
+}
+
+// HTTP client with timeout
+var httpClient = &http.Client{
+    Timeout: apiTimeout,
+}
+
+// makeAPIRequest sends a request to the Ollama API with timeout
+func makeAPIRequest(jsonData []byte) (*http.Response, error) {
+    req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, fmt.Errorf("error creating request: %v", err)
+    }
+    
+    req.Header.Set("Content-Type", "application/json")
+    
+    return httpClient.Do(req)
 }
 
 func main() {
@@ -359,31 +456,52 @@ func main() {
         return
     }
 
-    // Make the API request
-    resp, err := http.Post(getOllamaAPI(), "application/json", bytes.NewBuffer(jsonData))
+    // Print top margin
+    printMargin(topMargin)
+
+    // Show assistant label immediately
+    fmt.Printf("%s", colorize(getAssistantLabel(), currentAssistant.LabelColor))
+
+    // Start the animation before making the request
+    anim := startAnimation()
+
+    // Make the API request with timeout
+    resp, err := makeAPIRequest(jsonData)
     if err != nil {
+        anim.stopAnimation()
         fmt.Printf("Error making request: %v\n", err)
         return
     }
     defer resp.Body.Close()
 
-    // Print top margin
-    printMargin(topMargin)
+    // Add test delay if enabled
+    if testAnimationDelay {
+        time.Sleep(time.Second * testDelayDuration)
+    }
 
     // Create a decoder for the streaming response
     decoder := json.NewDecoder(resp.Body)
     
     // Process the streaming response
     var fullResponse strings.Builder
-    fmt.Printf("%s: ", colorize(getAssistantLabel(), currentAssistant.LabelColor)) // Add a colored prefix with optional emoji
+    var firstChunk bool = true
+    
     for {
         var streamResp ChatResponse
         if err := decoder.Decode(&streamResp); err != nil {
             if err == io.EOF {
                 break
             }
+            // Stop animation before showing error
+            anim.stopAnimation()
             fmt.Printf("Error decoding response: %v\n", err)
             return
+        }
+
+        // Stop animation before printing first chunk
+        if firstChunk {
+            anim.stopAnimation()
+            firstChunk = false
         }
 
         // Print the response chunk immediately with color
