@@ -21,6 +21,7 @@ Chatty comes with several pre-configured AI personalities:
 3. **Nova** - A tech-savvy assistant with a passion for innovation
 4. **Terra** - An eco-conscious assistant promoting sustainability
 5. **Atlas** - A structured assistant focusing on organization and planning
+6. **Tux** - A Linux terminal expert specializing in command-line operations and shell scripting
 
 Each assistant comes with:
 
