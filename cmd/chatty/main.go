@@ -39,8 +39,9 @@ const (
     historyDir    = ".chatty"               // Directory to store chat histories
     configFile    = "config.json"           // File to store current assistant selection
 
-    // API timeouts
-    apiTimeout    = 30 * time.Second       // Timeout for API requests
+    // Request timeouts
+    initialTimeout = 30 * time.Second       // Timeout for regular interactions
+    systemTimeout  = 90 * time.Second       // Longer timeout when system message is included
     
     // Display configuration
     topMargin     = 1           // Number of blank lines before response
@@ -353,21 +354,69 @@ func getOllamaAPI() string {
     return ollamaBaseURL + ollamaURLPath
 }
 
-// HTTP client with timeout
-var httpClient = &http.Client{
-    Timeout: apiTimeout,
+// HTTP client without timeout (we'll use context for initial timeout)
+var httpClient = &http.Client{}
+
+// processStreamResponse handles the streaming response
+func processStreamResponse(resp *http.Response, anim *Animation) (string, error) {
+    var fullResponse strings.Builder
+    var firstChunk bool = true
+    
+    // Create a decoder for the streaming response
+    decoder := json.NewDecoder(resp.Body)
+    
+    for {
+        var streamResp ChatResponse
+        if err := decoder.Decode(&streamResp); err != nil {
+            if err == io.EOF {
+                return fullResponse.String(), nil
+            }
+            return fullResponse.String(), fmt.Errorf("error reading response: %v", err)
+        }
+        
+        // Process the chunk
+        if firstChunk {
+            anim.stopAnimation()
+            firstChunk = false
+        }
+        
+        // Print the response chunk immediately with color
+        fmt.Print(colorize(streamResp.Message.Content, currentAssistant.TextColor))
+        fullResponse.WriteString(streamResp.Message.Content)
+        
+        if streamResp.Done {
+            return fullResponse.String(), nil
+        }
+    }
 }
 
-// makeAPIRequest sends a request to the Ollama API with timeout
-func makeAPIRequest(jsonData []byte) (*http.Response, error) {
+// makeAPIRequest sends a request to the Ollama API with appropriate timeout
+func makeAPIRequest(jsonData []byte, history []Message) (*http.Response, error) {
+    // Determine if this is a first interaction (includes system message)
+    timeout := initialTimeout
+    if len(history) == 2 { // System message + first user message
+        timeout = systemTimeout
+    }
+
+    // Create the request
     req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
     if err != nil {
         return nil, fmt.Errorf("error creating request: %v", err)
     }
-    
     req.Header.Set("Content-Type", "application/json")
-    
-    return httpClient.Do(req)
+
+    // Use client with appropriate timeout
+    client := &http.Client{
+        Timeout: timeout,
+    }
+
+    // Make the request
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, fmt.Errorf("error connecting to Ollama (waited %s): %v", timeout, err)
+    }
+
+    return resp, nil
 }
 
 func main() {
@@ -466,7 +515,7 @@ func main() {
     anim := startAnimation()
 
     // Make the API request with timeout
-    resp, err := makeAPIRequest(jsonData)
+    resp, err := makeAPIRequest(jsonData, history)
     if err != nil {
         anim.stopAnimation()
         fmt.Printf("Error making request: %v\n", err)
@@ -474,43 +523,11 @@ func main() {
     }
     defer resp.Body.Close()
 
-    // Add test delay if enabled
-    if testAnimationDelay {
-        time.Sleep(time.Second * testDelayDuration)
-    }
-
-    // Create a decoder for the streaming response
-    decoder := json.NewDecoder(resp.Body)
-    
     // Process the streaming response
-    var fullResponse strings.Builder
-    var firstChunk bool = true
-    
-    for {
-        var streamResp ChatResponse
-        if err := decoder.Decode(&streamResp); err != nil {
-            if err == io.EOF {
-                break
-            }
-            // Stop animation before showing error
-            anim.stopAnimation()
-            fmt.Printf("Error decoding response: %v\n", err)
-            return
-        }
-
-        // Stop animation before printing first chunk
-        if firstChunk {
-            anim.stopAnimation()
-            firstChunk = false
-        }
-
-        // Print the response chunk immediately with color
-        fmt.Print(colorize(streamResp.Message.Content, currentAssistant.TextColor))
-        fullResponse.WriteString(streamResp.Message.Content)
-
-        if streamResp.Done {
-            break
-        }
+    fullResponseText, err := processStreamResponse(resp, anim)
+    if err != nil {
+        fmt.Printf("\nError: %v\n", err)
+        return
     }
 
     // Ensure we're on a new line before printing margin
@@ -522,7 +539,7 @@ func main() {
     // Add assistant's response to history
     history = append(history, Message{
         Role:    "assistant",
-        Content: fullResponse.String(),
+        Content: fullResponseText,
     })
 
     // Save updated history
