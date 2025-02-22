@@ -40,8 +40,7 @@ const (
     configFile    = "config.json"           // File to store current assistant selection
 
     // Request timeouts
-    initialTimeout = 30 * time.Second       // Timeout for regular interactions
-    systemTimeout  = 90 * time.Second       // Longer timeout when system message is included
+    connectionTimeout = 30 * time.Second    // Timeout only for initial connection
     
     // Display configuration
     topMargin     = 1           // Number of blank lines before response
@@ -52,10 +51,6 @@ const (
     
     // Animation configuration
     frameDelay   = 200          // Milliseconds between animation frames
-    
-    // Test configuration
-    testAnimationDelay = false  // Enable/disable artificial delay for testing animation
-    testDelayDuration = 30      // Delay duration in seconds when testAnimationDelay is true
 )
 
 // Animation control
@@ -392,12 +387,6 @@ func processStreamResponse(resp *http.Response, anim *Animation) (string, error)
 
 // makeAPIRequest sends a request to the Ollama API with appropriate timeout
 func makeAPIRequest(jsonData []byte, history []Message) (*http.Response, error) {
-    // Determine if this is a first interaction (includes system message)
-    timeout := initialTimeout
-    if len(history) == 2 { // System message + first user message
-        timeout = systemTimeout
-    }
-
     // Create the request
     req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
     if err != nil {
@@ -405,15 +394,23 @@ func makeAPIRequest(jsonData []byte, history []Message) (*http.Response, error) 
     }
     req.Header.Set("Content-Type", "application/json")
 
-    // Use client with appropriate timeout
+    // Use client with connection timeout only
+    transport := &http.Transport{
+        ResponseHeaderTimeout: connectionTimeout,
+        IdleConnTimeout:      90 * time.Second,
+        TLSHandshakeTimeout:  10 * time.Second,
+        DisableKeepAlives:    false,
+    }
+    
     client := &http.Client{
-        Timeout: timeout,
+        Transport: transport,
+        // No client timeout since we're streaming
     }
 
     // Make the request
     resp, err := client.Do(req)
     if err != nil {
-        return nil, fmt.Errorf("error connecting to Ollama (waited %s): %v", timeout, err)
+        return nil, fmt.Errorf("error connecting to Ollama: %v", err)
     }
 
     return resp, nil
