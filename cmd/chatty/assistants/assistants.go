@@ -36,7 +36,7 @@ const (
 	// zh-TW - Chinese (Traditional)
 	// fr-CA - French (Canada)
 	// fr-FR - French (France)
-	defaultLanguage = "fr-FR"
+	defaultLanguage = "en-US"
 
 	// Common directives template that includes language settings
 	commonDirectivesTemplate = `
