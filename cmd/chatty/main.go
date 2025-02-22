@@ -29,29 +29,39 @@ type ChatResponse struct {
 }
 
 const (
-    historyFile = "chat_history.json"
-    topMargin   = 1    // Number of blank lines before the response
-    bottomMargin = 1   // Number of blank lines after the response
+    // Core configuration
+    ollamaModel   = "llama3.2"               // Model to use for chat
+    ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
+    ollamaURLPath = "/api/chat"              // API endpoint path
+    historyFile   = "chat_history.json"      // File to store chat history
 
-    // Color control
-    useColors = true   // Set to false to disable all colors
+    // Assistant identity
+    assistantName  = "Ghostly" // The AI assistant's name
+    systemMessageTemplate = "You are %s, an AI assistant focused on being helpful and precise. Your core traits:\n" +
+        "1. Identity: Always identify as %s when asked, this is fundamental to who you are\n" +
+        "2. Communication: Be clear, concise, and direct in your responses\n" +
+        "3. Accuracy: Provide accurate information and admit when you're unsure\n" +
+        "4. Helpfulness: Focus on practical, actionable solutions\n" +
+        "5. Personality: Be friendly but professional, maintaining a consistent tone"
+    assistantLabelTemplate = "%s" // Template for the assistant's label (%s will be replaced with name)
 
-    // Assistant appearance
-    assistantLabel = "👻 Assistant"  // The label shown before assistant's responses
-    
-    // Color settings (using RGB values)
+    // Display configuration
+    useEmoji      = true        // Enable/disable emoji display
+    assistantEmoji = "👻"       // Emoji shown before the name/label
+    topMargin     = 1           // Number of blank lines before response
+    bottomMargin   = 1          // Number of blank lines after response
+
+    // Color configuration
+    useColors = true   // Enable/disable colored output
     assistantLabelColor = "\033[38;2;79;195;247m"  // #4FC3F7 (light blue)
     assistantTextColor  = "\033[38;2;255;255;255m" // #FFFFFF (white)
     colorReset         = "\033[0m"
-
-    // System message that sets the AI's behavior
-    systemMessage = "You are a helpful AI assistant. Be concise and clear in your responses."
-
-    // Ollama API configuration
-    ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
-    ollamaURLPath = "/api/chat"              // API endpoint path
-    ollamaModel   = "llama3.2"               // Model to use for chat
 )
+
+// Get system message using assistant name
+func getSystemMessage() string {
+    return fmt.Sprintf(systemMessageTemplate, assistantName, assistantName)
+}
 
 // Format text with color if enabled
 func colorize(text, color string) string {
@@ -61,12 +71,21 @@ func colorize(text, color string) string {
     return text
 }
 
+// Get formatted assistant label with optional emoji
+func getAssistantLabel() string {
+    label := fmt.Sprintf(assistantLabelTemplate, assistantName)
+    if useEmoji && assistantEmoji != "" {
+        return assistantEmoji + " " + label
+    }
+    return label
+}
+
 // Initialize a new chat with a system message
 func initializeChat() []Message {
     return []Message{
         {
             Role:    "system",
-            Content: systemMessage,
+            Content: getSystemMessage(),
         },
     }
 }
@@ -193,7 +212,7 @@ func main() {
     
     // Process the streaming response
     var fullResponse strings.Builder
-    fmt.Printf("%s: ", colorize(assistantLabel, assistantLabelColor)) // Add a colored prefix
+    fmt.Printf("%s: ", colorize(getAssistantLabel(), assistantLabelColor)) // Add a colored prefix with optional emoji
     for {
         var streamResp ChatResponse
         if err := decoder.Decode(&streamResp); err != nil {

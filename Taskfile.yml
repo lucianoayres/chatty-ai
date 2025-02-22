@@ -1,0 +1,33 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build the project
+    cmds:
+      - go build -o bin/chatty cmd/chatty/main.go
+
+  # copy the binary to the /usr/local/bin directory
+  install:
+    desc: Install the binary to /usr/local/bin
+    cmds:
+      - sudo cp bin/chatty /usr/local/bin
+
+  # remove the binary from /usr/local/bin
+  uninstall:
+    desc: Remove the binary from /usr/local/bin
+    cmds:
+      - sudo rm -f /usr/local/bin/chatty
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin
+
+  default:
+    desc: Run build and test tasks
+    deps: [build, test]

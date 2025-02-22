@@ -118,15 +118,19 @@ The program handles various error cases:
 To build a standalone executable:
 
 ```bash
-go build -o chatty
+# Create the bin directory if it doesn't exist
+mkdir -p bin
+
+# Build the executable
+go build -o bin/chatty cmd/chatty/main.go
 ```
 
 Then you can run it directly:
 
 ```bash
-./chatty "Your question here"
+./bin/chatty "Your question here"
 # or
-./chatty How are you today?
+./bin/chatty How are you today?
 ```
 
 ## Notes
