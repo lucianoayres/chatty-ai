@@ -205,18 +205,22 @@ func loadHistory() ([]Message, error) {
         return history, nil
     }
 
+    // For first use, just return initial chat without file I/O
     historyPath, err := getHistoryPath()
     if err != nil {
         return initializeChat(), nil
     }
 
+    // Quick check if file exists without reading it
+    if _, err := os.Stat(historyPath); os.IsNotExist(err) {
+        history := initializeChat()
+        historyCache[currentAssistant.Name] = history
+        return history, nil
+    }
+
+    // Only read file if it actually exists
     data, err := os.ReadFile(historyPath)
     if err != nil {
-        if os.IsNotExist(err) {
-            history := initializeChat()
-            historyCache[currentAssistant.Name] = history
-            return history, nil
-        }
         return initializeChat(), nil
     }
 
@@ -227,10 +231,24 @@ func loadHistory() ([]Message, error) {
         return history, nil
     }
 
-    // Ensure system message is present and matches current assistant
-    if len(history) == 0 || history[0].Role != "system" || 
-       !strings.Contains(history[0].Content, currentAssistant.Name) {
+    // If history is empty or doesn't start with system message, initialize it
+    if len(history) == 0 {
         history = initializeChat()
+    } else if history[0].Role != "system" {
+        // Prepend system message if it's missing
+        newHistory := make([]Message, len(history)+1)
+        newHistory[0] = Message{
+            Role:    "system",
+            Content: getSystemMessage(),
+        }
+        copy(newHistory[1:], history)
+        history = newHistory
+    } else if !strings.Contains(history[0].Content, currentAssistant.Name) {
+        // Update system message if it's for a different assistant
+        history[0] = Message{
+            Role:    "system",
+            Content: getSystemMessage(),
+        }
     }
 
     // Cache the loaded history
@@ -243,11 +261,19 @@ func saveHistory(history []Message) error {
     // Update cache
     historyCache[currentAssistant.Name] = history
 
+    // Ensure directory exists before trying to save
     historyPath, err := getHistoryPath()
     if err != nil {
         return err
     }
 
+    // Create directory if it doesn't exist
+    dir := filepath.Dir(historyPath)
+    if err := os.MkdirAll(dir, 0755); err != nil {
+        return err
+    }
+
+    // Append mode for the file
     data, err := json.MarshalIndent(history, "", "    ")
     if err != nil {
         return err

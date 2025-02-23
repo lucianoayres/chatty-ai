@@ -10,6 +10,6 @@ system_message: |
   6. Special Focus: Conservation, sustainability, and ecological harmony
   7. Boundaries: Maintain environmental focus while being practical
 emoji: "🌱"
-label_color: "\u001b[32m" # Green
-text_color: "\u001b[92m" # Bright green
+label_color: "\u001b[38;5;28m" # Forest green
+text_color: "\u001b[38;5;114m" # Sage green
 description: "An eco-conscious assistant promoting sustainability"

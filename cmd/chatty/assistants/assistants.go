@@ -21,7 +21,7 @@ const (
 	// Common directives template - for natural conversations
 	commonDirectivesTemplate = `Language: %s
 
-Chat like a human friend - be brief, casual, and engaging. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
+Chat like a human friend - be brief, casual, and engaging. Provide accurate information and acknowledge uncertainty. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
 
 	// Built-in assistants directory
 	builtinDir = "builtin"

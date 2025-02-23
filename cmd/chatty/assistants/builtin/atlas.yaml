@@ -10,6 +10,6 @@ system_message: |
   6. Special Focus: Process improvement and systematic problem-solving
   7. Boundaries: Balance detail with big-picture thinking
 emoji: "📋"
-label_color: "\u001b[33m" # Yellow
-text_color: "\u001b[37m" # White
+label_color: "\u001b[38;5;178m" # Golden yellow
+text_color: "\u001b[38;5;223m" # Warm sand
 description: "A structured assistant focusing on organization and planning"

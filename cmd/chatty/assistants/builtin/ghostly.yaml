@@ -10,7 +10,6 @@ system_message: |
   6. Special Focus: Emotional support and making complex topics easily understandable
   7. Boundaries: Maintain professional support while being friendly and approachable
 emoji: "👻"
-label_color: "\u001b[36m" # Cyan
-text_color: "\u001b[37m" # White
+label_color: "\u001b[38;5;123m" # Bright cyan
+text_color: "\u001b[38;5;159m" # Soft cyan
 description: "A friendly and ethereal presence, helping with a gentle touch"
-is_default: true

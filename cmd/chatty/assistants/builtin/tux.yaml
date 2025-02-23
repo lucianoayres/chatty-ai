@@ -10,6 +10,6 @@ system_message: |
   6. Special Focus: Command-line operations and system security
   7. Boundaries: Prioritize security and stability in all operations
 emoji: "🐧"
-label_color: "\u001b[90m" # Dark gray
-text_color: "\u001b[37m" # White
+label_color: "\u001b[38;5;248m" # Steel gray
+text_color: "\u001b[38;5;252m" # Light silver
 description: "A Linux terminal expert specializing in command-line operations and shell scripting"
