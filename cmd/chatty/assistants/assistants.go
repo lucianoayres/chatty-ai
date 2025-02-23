@@ -13,9 +13,10 @@ const (
 	// Language setting (en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN)
 	languageCode = "en-US"
 
-	// Common directives template - simplified for faster responses
+	// Common directives template - for natural conversations
 	commonDirectivesTemplate = `Language: %s
-	Be clear, concise, and helpful while maintaining conversation context.`
+
+Chat like a human friend - be brief, casual, and engaging. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
 )
 
 // AssistantConfig holds all configuration for an assistant's identity and appearance
