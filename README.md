@@ -119,12 +119,14 @@ You can send messages in two ways:
 # Clear conversation history
 ./bin/chatty --clear              # Clear all histories
 ./bin/chatty --clear rocket      # Clear specific assistant's history
+./bin/chatty --clear "Data Scientist"  # Clear history for assistant with multi-word name
 
 # List available assistants
 ./bin/chatty --list
 
 # Switch to a different assistant
-./bin/chatty --select nova
+./bin/chatty --select rocket           # Single-word name
+./bin/chatty --select "Data Scientist" # Multi-word name
 
 # Show current assistant
 ./bin/chatty --current
@@ -171,6 +173,9 @@ Each assistant is defined by a YAML file with the following fields:
 
 ```yaml
 # The name of your assistant (required)
+# Can be a single word or multiple words (e.g., "Data Scientist")
+# When using multi-word names in commands, remember to quote them:
+# ./chatty --select "Data Scientist"
 name: "Assistant Name"
 
 # The system message defines your assistant's personality (required)
@@ -239,6 +244,29 @@ When creating custom assistants:
 5. Keep descriptions concise but informative
 6. Test the assistant with various queries
 7. Maintain conversation context appropriately
+
+### File Naming Conventions
+
+When creating your YAML files in `~/.chatty/assistants/`:
+
+1. Use lowercase letters for the file name: `data_scientist.yaml` (not `Data_Scientist.yaml`)
+2. Replace spaces with underscores: `machine_learning_expert.yaml` (not `machine learning expert.yaml`)
+3. Use `.yaml` extension (not `.yml`)
+4. Keep the file name simple and related to the assistant's name:
+
+   ```bash
+   # Good examples:
+   python_expert.yaml     # For an assistant named "Python Expert"
+   data_scientist.yaml    # For "Data Scientist"
+   ml_assistant.yaml      # For "Machine Learning Assistant"
+
+   # Avoid:
+   my_assistant_1.yaml    # Not descriptive
+   AI_Assistant.yaml      # Don't use uppercase
+   machine.learning.yaml  # Don't use dots
+   ```
+
+Note: The file name doesn't have to match the assistant's display name exactly. The display name is defined by the `name` field inside the YAML file and can contain spaces and proper capitalization.
 
 ## Development
 
