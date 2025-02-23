@@ -14,9 +14,10 @@ tasks:
 
   # remove the binary from /usr/local/bin
   uninstall:
-    desc: Remove the binary from /usr/local/bin
+    desc: Remove the binary from /usr/local/bin and clean up the config files and chat history
     cmds:
       - sudo rm -f /usr/local/bin/chatty
+      - rm -rf ~/.chatty
 
   test:
     desc: Run tests

@@ -13,17 +13,28 @@ Chatty is a command-line interface for chatting with Ollama's LLMs (Large Langua
 - Clear and readable output format
 - Colored output with 256-color support
 - Consistent text margins
+- Sample assistant configurations for easy customization
 
-## Available Assistants
+## Built-in Assistants
+
+These are the assistants that come pre-configured with Chatty. You can use them as-is, customize them, or create entirely new ones (see [Customizing Assistants](#customizing-assistants) section below).
 
 - **Rocket** 🚀 - Your friendly coding companion for development guidance and best practices
-- **Fin** 📈 - Your thoughtful guide for investment and financial planning
-- **Flex** 💪 - Your motivating companion for fitness and exercise guidance
-- **Zen** 🧘 - Your peaceful guide for mindfulness and mental wellness
-- **Max** 🎯 - Your efficiency expert for productivity and organization
-- **Sage** 📚 - Your dedicated companion for learning and academic growth
-- **Nova** 🌟 - Your friendly guide through the world of technology
-- **Vita** 🥗 - Your friendly guide for nutrition and healthy eating habits
+- **Tux** 🐧 - Your Linux terminal expert for command-line operations and shell scripting
+- **Focus** 🎯 - Your efficiency expert for productivity and organization
+
+Want more? You can easily create your own assistants by:
+
+1. Using the provided sample configurations in `~/.chatty/assistants/*.sample`
+2. Copying and customizing existing assistants
+3. Creating new ones from scratch with your own personality and specialization
+
+Each assistant can have its own:
+
+- Unique personality and expertise
+- Custom emoji and color scheme
+- Specialized knowledge domain
+- Conversation style and approach
 
 ## Project Structure
 
@@ -34,18 +45,17 @@ chatty/
 │       ├── main.go            # Main application code
 │       └── assistants/
 │           ├── assistants.go  # Assistant management
-│           └── builtin/       # Built-in assistant configurations
-│               ├── rocket.yaml   # Coding assistant
-│               ├── fin.yaml      # Financial advisor
-│               ├── flex.yaml     # Fitness trainer
-│               ├── zen.yaml      # Mindfulness guide
-│               ├── max.yaml      # Productivity expert
-│               ├── sage.yaml     # Educational tutor
-│               ├── nova.yaml     # Tech guide
-│               └── vita.yaml     # Nutrition expert
+│           ├── builtin/       # Built-in assistant configurations
+│           │   ├── rocket.yaml   # Coding assistant
+│           │   ├── tux.yaml      # Linux terminal expert
+│           │   └── focus.yaml    # Productivity expert
+│           └── samples/       # Sample assistant configurations
+│               └── focus.yaml    # Example assistant template
 └── ~/.chatty/                # User data directory (created automatically)
     ├── config.json          # Current assistant selection
-    └── chat_history_*.json  # Conversation histories
+    ├── chat_history_*.json  # Conversation histories
+    └── assistants/         # User-defined assistants
+        └── *.yaml.sample   # Sample assistant configurations
 ```
 
 ## Prerequisites
@@ -132,6 +142,104 @@ Each assistant maintains their own chat history in `~/.chatty/`:
 - Histories are automatically created on first use
 - Each assistant maintains independent conversation context
 
+## Customizing Assistants
+
+### Using Sample Assistants
+
+When you first run Chatty, it automatically creates sample assistant configurations in your home directory:
+
+1. Look for `.sample` files in `~/.chatty/assistants/`:
+
+   ```bash
+   ls ~/.chatty/assistants/*.sample
+   ```
+
+2. Create your own assistant by copying a sample:
+
+   ```bash
+   cp ~/.chatty/assistants/focus.yaml.sample ~/.chatty/assistants/myassistant.yaml
+   ```
+
+3. Edit the new file to customize your assistant:
+   ```bash
+   nano ~/.chatty/assistants/myassistant.yaml
+   ```
+
+### Assistant Configuration Fields
+
+Each assistant is defined by a YAML file with the following fields:
+
+```yaml
+# The name of your assistant (required)
+name: "Assistant Name"
+
+# The system message defines your assistant's personality (required)
+system_message: |
+  You are [assistant description].
+
+  1. Core Identity: [main role and characteristics]
+  2. Personality: [personality traits]
+  3. Communication: [communication style]
+  4. Approach: [how to handle tasks]
+  5. Knowledge: [areas of expertise]
+  6. Special Focus: [specific strengths]
+  7. Boundaries: [limitations and guidelines]
+
+# Choose an emoji that represents your assistant (required)
+emoji: "🤖"
+
+# Set the color for your assistant's name (required)
+# Use 256-color ANSI codes: \u001b[38;5;XXXm where XXX is 0-255
+label_color: "\u001b[38;5;75m" # Blue
+
+# Set the color for your assistant's responses (required)
+text_color: "\u001b[38;5;252m" # Light gray
+
+# A brief description of what your assistant does (required)
+description: "A brief description of the assistant"
+```
+
+### Color Customization
+
+The application supports 256-color ANSI codes for rich terminal colors:
+
+- Format: `\u001b[38;5;XXXm` where XXX is the color code (0-255)
+- Each assistant can have unique label and text colors
+- Use online ANSI color pickers to find appropriate codes
+- Common colors:
+  - 82: Bright green
+  - 220: Bright yellow
+  - 75: Bright blue
+  - 213: Bright magenta
+  - 252: Light gray
+
+You can find a complete color chart here: https://www.ditig.com/256-colors-cheat-sheet
+
+### Assistant Loading Order
+
+Assistants are loaded in the following order:
+
+1. User-defined assistants (from `~/.chatty/assistants/`)
+2. Built-in assistants (if not overridden by user assistants)
+
+This means you can:
+
+- Override built-in assistants by creating a file with the same name
+- Create entirely new assistants with unique names
+- Keep your custom assistants separate from the application
+
+### Best Practices
+
+When creating custom assistants:
+
+1. Use descriptive names that reflect the assistant's purpose
+2. Write clear and focused system messages
+3. Choose appropriate emojis that represent the role
+4. Use contrasting colors for readability
+5. Keep descriptions concise but informative
+6. Test the assistant with various queries
+7. Maintain conversation context appropriately
+
 ## Development
 
 ### Building
@@ -152,9 +260,10 @@ task clean
 
 ### Adding Features
 
-1. Create new assistant YAML files in `builtin/` if needed
-2. Implement new features in `main.go` or `assistants.go`
-3. Follow the existing code structure and patterns
+1. Create new assistant YAML files in `builtin/` for core assistants
+2. Add sample configurations in `samples/` for user reference
+3. Implement new features in `main.go` or `assistants.go`
+4. Follow the existing code structure and patterns
 
 ## Error Handling
 
@@ -165,6 +274,7 @@ The program handles various error cases:
 - File system errors
 - JSON parsing errors
 - Invalid assistant selection
+- Sample file copying issues
 
 ## Notes
 
@@ -174,3 +284,4 @@ The program handles various error cases:
 - Assistant personalities can be switched at any time
 - The API endpoint can be changed to connect to remote Ollama instances
 - Each assistant maintains their unique personality and style
+- Sample assistants are provided as templates for customization

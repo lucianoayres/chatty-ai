@@ -496,7 +496,12 @@ func main() {
             fmt.Printf("Error saving assistant selection: %v\n", err)
             return
         }
-        fmt.Printf("Switched to %s: %s\n", currentAssistant.Name, currentAssistant.Description)
+        fmt.Printf("Switched to %s [%s%s%s] %s\n", 
+            currentAssistant.Emoji,
+            currentAssistant.LabelColor,
+            currentAssistant.Name,
+            "\u001b[0m", // Reset color
+            currentAssistant.Description)
         return
     }
 
