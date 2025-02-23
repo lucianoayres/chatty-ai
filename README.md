@@ -1,3 +1,5 @@
+name: "Max"
+
 # Chatty
 
 Chatty is a command-line interface for chatting with Ollama's LLMs (Large Language Models) with streaming responses, conversation history, and customizable AI personalities.
@@ -5,36 +7,52 @@ Chatty is a command-line interface for chatting with Ollama's LLMs (Large Langua
 ## Features
 
 - Real-time streaming responses
-- Persistent conversation history
-- Multiple AI personalities to choose from
+- Persistent conversation history per assistant
+- Multiple specialized AI personalities
 - Customizable appearance and behavior
 - Clear and readable output format
-- Colored output (configurable)
+- Colored output with 256-color support
 - Consistent text margins
 
 ## Available Assistants
 
-Chatty comes with several pre-configured AI personalities:
+- **Rocket** 🚀 - Your friendly coding companion for development guidance and best practices
+- **Fin** 📈 - Your thoughtful guide for investment and financial planning
+- **Flex** 💪 - Your motivating companion for fitness and exercise guidance
+- **Zen** 🧘 - Your peaceful guide for mindfulness and mental wellness
+- **Max** 🎯 - Your efficiency expert for productivity and organization
+- **Sage** 📚 - Your dedicated companion for learning and academic growth
+- **Nova** 🌟 - Your friendly guide through the world of technology
+- **Vita** 🥗 - Your friendly guide for nutrition and healthy eating habits
 
-1. **Ghostly** (Default) - A friendly and ethereal presence, helping with a gentle touch
-2. **Sage** - A wise mentor focused on deep understanding and guidance
-3. **Nova** - A tech-savvy assistant with a passion for innovation
-4. **Terra** - An eco-conscious assistant promoting sustainability
-5. **Atlas** - A structured assistant focusing on organization and planning
-6. **Tux** - A Linux terminal expert specializing in command-line operations and shell scripting
+## Project Structure
 
-Each assistant comes with:
-
-- Unique personality and communication style
-- Custom emoji and color scheme
-- Specialized system message
-- Distinct area of expertise
+```
+chatty/
+├── cmd/
+│   └── chatty/
+│       ├── main.go            # Main application code
+│       └── assistants/
+│           ├── assistants.go  # Assistant management
+│           └── builtin/       # Built-in assistant configurations
+│               ├── rocket.yaml   # Coding assistant
+│               ├── fin.yaml      # Financial advisor
+│               ├── flex.yaml     # Fitness trainer
+│               ├── zen.yaml      # Mindfulness guide
+│               ├── max.yaml      # Productivity expert
+│               ├── sage.yaml     # Educational tutor
+│               ├── nova.yaml     # Tech guide
+│               └── vita.yaml     # Nutrition expert
+└── ~/.chatty/                # User data directory (created automatically)
+    ├── config.json          # Current assistant selection
+    └── chat_history_*.json  # Conversation histories
+```
 
 ## Prerequisites
 
 - Go 1.16 or later
 - Ollama installed and running locally
-- The `llama3.2` model installed in Ollama (or modify the model name in constants)
+- The `llama3.2` model installed in Ollama
 
 ## Installation
 
@@ -55,6 +73,16 @@ ollama serve
 
 ```bash
 ollama pull llama3.2
+```
+
+4. Build the application:
+
+```bash
+# Using go build
+go build -o bin/chatty cmd/chatty/main.go
+
+# Or using the provided task file
+task build
 ```
 
 ## Usage
@@ -79,59 +107,54 @@ You can send messages in two ways:
 
 ```bash
 # Clear conversation history
-./bin/chatty --clear
+./bin/chatty --clear              # Clear all histories
+./bin/chatty --clear buddy       # Clear specific assistant's history
 
 # List available assistants
 ./bin/chatty --list
 
 # Switch to a different assistant
-./bin/chatty --select Sage
+./bin/chatty --select nova
+
+# Show current assistant
+./bin/chatty --current
 ```
 
-### Configuration
+## Chat History
 
-All configuration is done through constants and the assistant configuration system:
+Each assistant maintains their own chat history in `~/.chatty/`:
 
-```go
-// Core configuration
-ollamaModel   = "llama3.2"               // Model to use for chat
-ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
-ollamaURLPath = "/api/chat"              // API endpoint path
-historyFile   = "chat_history.json"      // File to store chat history
-
-// Display settings
-useEmoji     = true    // Enable/disable emoji display
-useColors    = true    // Enable/disable colored output
-topMargin    = 1      // Blank lines before response
-bottomMargin = 1      // Blank lines after response
-```
-
-Each assistant's configuration includes:
-
-- Name
-- System message template
-- Emoji
-- Label color
-- Text color
-- Description
-
-### Chat History
-
-Each assistant maintains their own chat history file in the `~/.chatty/` directory:
-
-- Files are named `chat_history_<assistant>.json` (e.g., `chat_history_ghostly.json`)
-- Each history includes:
-  - A system message that sets the AI's behavior
-  - All user messages and AI responses in chronological order
+- Files are named `chat_history_<assistant>.json`
+- Histories include:
+  - System message that sets the AI's behavior
+  - All user messages and AI responses
   - Context preservation between conversations
-- When switching assistants:
-  - The program automatically loads the correct history file
-  - If no history exists for an assistant, a new one is created
-  - Each assistant maintains their own conversation context
-- When adding new assistants to the code:
-  - A new history file is automatically created on first use
-  - No manual setup is required
-  - Each new assistant starts with a fresh conversation
+- Histories are automatically created on first use
+- Each assistant maintains independent conversation context
+
+## Development
+
+### Building
+
+```bash
+# Create a development build
+task build
+
+# Install to system
+task install
+
+# Run tests
+task test
+
+# Clean build artifacts
+task clean
+```
+
+### Adding Features
+
+1. Create new assistant YAML files in `builtin/` if needed
+2. Implement new features in `main.go` or `assistants.go`
+3. Follow the existing code structure and patterns
 
 ## Error Handling
 
@@ -143,35 +166,11 @@ The program handles various error cases:
 - JSON parsing errors
 - Invalid assistant selection
 
-## Building
-
-To build a standalone executable:
-
-```bash
-# Create the bin directory if it doesn't exist
-mkdir -p bin
-
-# Build the executable
-go build -o bin/chatty cmd/chatty/main.go
-```
-
-Then you can run it directly:
-
-```bash
-./bin/chatty "Your question here"
-# or
-./bin/chatty How are you today?
-```
-
 ## Notes
 
 - The chat history is maintained between sessions
 - The AI maintains context of previous conversations
 - Responses are streamed in real-time as they're generated
-- All configuration can be easily modified through constants
-- Colors can be disabled by setting `useColors = false`
-- Emoji can be disabled by setting `useEmoji = false`
 - Assistant personalities can be switched at any time
 - The API endpoint can be changed to connect to remote Ollama instances
 - Each assistant maintains their unique personality and style
-- System messages are automatically updated when switching assistants
