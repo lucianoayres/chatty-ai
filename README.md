@@ -85,7 +85,20 @@ All settings are stored in `~/.chatty/config.json`:
 
 - `current_assistant`: The active AI personality
 - `language_code`: Language for interactions (default: "en-US")
+
   - Supported: en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN
+  - **Important**: After changing the language code, it's recommended to clear the chat history:
+
+    ```bash
+    # Clear history for specific assistant
+    chatty --clear <assistant_name>
+
+    # Or clear all histories
+    chatty --clear all
+    ```
+
+  - This ensures consistent language use, as previous conversations in different languages may influence the assistant's language choice
+
 - `model`: Ollama model to use (default: "llama2")
   - Must be installed in Ollama (use `ollama list` to see available models)
 - `common_directives`: Custom personality traits for all assistants
@@ -204,14 +217,23 @@ chatty/
    - Check available models: `ollama list`
    - Update model in `~/.chatty/config.json`
 
-3. To start fresh:
+3. If the assistant responds in the wrong language after changing `language_code`:
+
+   - Clear the chat history to ensure consistent language use:
+     ```bash
+     chatty --clear <assistant_name>  # For specific assistant
+     chatty --clear all              # For all assistants
+     ```
+   - The assistant may mix languages if previous conversations exist in different languages
+
+4. To start fresh:
 
    ```bash
    rm -rf ~/.chatty
    chatty init
    ```
 
-4. If Ollama connection fails:
+5. If Ollama connection fails:
    - Ensure Ollama is running: `ollama serve`
    - Check if the model is installed: `ollama list`
    - Install missing model: `ollama pull <model>`
