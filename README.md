@@ -108,7 +108,7 @@ You can send messages in two ways:
 ```bash
 # Clear conversation history
 ./bin/chatty --clear              # Clear all histories
-./bin/chatty --clear buddy       # Clear specific assistant's history
+./bin/chatty --clear rocket      # Clear specific assistant's history
 
 # List available assistants
 ./bin/chatty --list
