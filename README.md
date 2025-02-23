@@ -4,37 +4,170 @@ name: "Max"
 
 Chatty is a command-line interface for chatting with Ollama's LLMs (Large Language Models) with streaming responses, conversation history, and customizable AI personalities.
 
-## Features
+## Prerequisites
 
-- Real-time streaming responses
-- Persistent conversation history per assistant
-- Multiple specialized AI personalities
-- Customizable appearance and behavior
-- Clear and readable output format
-- Colored output with 256-color support
-- Consistent text margins
-- Sample assistant configurations for easy customization
+1. Install Ollama if you haven't already
+2. Start the Ollama server:
+   ```bash
+   ollama serve
+   ```
+3. Install Chatty:
+   ```bash
+   git clone <your-repo-url>
+   cd chatty
+   go build -o bin/chatty cmd/chatty/main.go
+   ```
+
+## Getting Started
+
+1. Initialize Chatty (required on first run):
+
+   ```bash
+   chatty init
+   ```
+
+   This will:
+
+   - Create the ~/.chatty directory
+   - Set up default configuration
+   - Create assistants directory
+   - Copy sample assistant configurations
+
+2. List available assistants:
+
+   ```bash
+   chatty --list
+   ```
+
+3. Select an assistant (optional, defaults to Rocket 🚀):
+
+   ```bash
+   chatty --select rocket           # Single-word name
+   chatty --select "Data Scientist" # Multi-word name
+   ```
+
+4. Start chatting:
+
+   ```bash
+   # Simple messages (no quotes needed)
+   chatty How are you doing today?
+
+   # Messages with special characters (use quotes)
+   chatty "What's the meaning of life?"
+   ```
+
+## Commands
+
+```bash
+chatty init                      # Initialize Chatty environment
+chatty --list                    # List available assistants
+chatty --select <name>          # Switch assistants
+chatty --current                # Show current assistant
+chatty --clear                  # Clear all histories
+chatty --clear <assistant>      # Clear specific assistant's history
+chatty <message>                # Chat with current assistant
+```
+
+## Configuration
+
+All settings are stored in `~/.chatty/config.json`:
+
+```json
+{
+  "current_assistant": "rocket",
+  "language_code": "en-US",
+  "model": "llama2",
+  "common_directives": "Be professional and formal..."
+}
+```
+
+### Available Settings
+
+- `current_assistant`: The active AI personality
+- `language_code`: Language for interactions (default: "en-US")
+  - Supported: en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN
+- `model`: Ollama model to use (default: "llama2")
+  - Must be installed in Ollama (use `ollama list` to see available models)
+- `common_directives`: Custom personality traits for all assistants
 
 ## Built-in Assistants
 
-These are the assistants that come pre-configured with Chatty. You can use them as-is, customize them, or create entirely new ones (see [Customizing Assistants](#customizing-assistants) section below).
+Chatty comes with pre-configured AI personalities:
 
 - **Rocket** 🚀 - Your friendly coding companion for development guidance and best practices
 - **Tux** 🐧 - Your Linux terminal expert for command-line operations and shell scripting
 - **Focus** 🎯 - Your efficiency expert for productivity and organization
 
-Want more? You can easily create your own assistants by:
+## Creating Custom Assistants
 
-1. Using the provided sample configurations in `~/.chatty/assistants/*.sample`
-2. Copying and customizing existing assistants
-3. Creating new ones from scratch with your own personality and specialization
+1. Navigate to sample configurations:
 
-Each assistant can have its own:
+   ```bash
+   ls ~/.chatty/assistants/*.sample
+   ```
 
-- Unique personality and expertise
-- Custom emoji and color scheme
-- Specialized knowledge domain
-- Conversation style and approach
+2. Create your assistant:
+
+   ```bash
+   cp ~/.chatty/assistants/focus.yaml.sample ~/.chatty/assistants/myassistant.yaml
+   ```
+
+3. Edit the configuration:
+   ```yaml
+   name: "Assistant Name" # Display name
+   system_message: | # Core personality
+     You are [description]...
+   emoji: "🤖" # Visual indicator
+   label_color: "\u001b[38;5;75m" # Name color (blue)
+   text_color: "\u001b[38;5;252m" # Response color
+   description: "Brief description"
+   ```
+
+### File Naming Conventions
+
+When creating assistant files:
+
+- Use lowercase: `data_scientist.yaml`
+- Use underscores for spaces: `machine_learning_expert.yaml`
+- Use `.yaml` extension
+- Keep names descriptive:
+
+  ```bash
+  # Good examples:
+  python_expert.yaml
+  data_scientist.yaml
+  ml_assistant.yaml
+
+  # Avoid:
+  my_assistant_1.yaml
+  AI_Assistant.yaml
+  machine.learning.yaml
+  ```
+
+### Color Customization
+
+Supports 256-color ANSI codes:
+
+- Format: `\u001b[38;5;XXXm` (XXX = 0-255)
+- Common colors:
+  - 82: Bright green
+  - 220: Yellow
+  - 75: Blue
+  - 213: Magenta
+  - 252: Light gray
+
+Color chart: https://www.ditig.com/256-colors-cheat-sheet
+
+## Chat History
+
+- Each assistant maintains separate history
+- Stored in `~/.chatty/chat_history_<assistant>.json`
+- Includes:
+  - System message (personality)
+  - All messages and responses
+  - Conversation context
+- Created automatically on first use
+- Clear with `chatty --clear <assistant>` or `chatty --clear all`
 
 ## Project Structure
 
@@ -42,238 +175,59 @@ Each assistant can have its own:
 chatty/
 ├── cmd/
 │   └── chatty/
-│       ├── main.go            # Main application code
+│       ├── main.go            # Main application
 │       └── assistants/
 │           ├── assistants.go  # Assistant management
-│           ├── builtin/       # Built-in assistant configurations
-│           │   ├── rocket.yaml   # Coding assistant
-│           │   ├── tux.yaml      # Linux terminal expert
-│           │   └── focus.yaml    # Productivity expert
-│           └── samples/       # Sample assistant configurations
-│               └── focus.yaml    # Example assistant template
-└── ~/.chatty/                # User data directory (created automatically)
-    ├── config.json          # Current assistant selection
-    ├── chat_history_*.json  # Conversation histories
-    └── assistants/         # User-defined assistants
-        └── *.yaml.sample   # Sample assistant configurations
+│           ├── builtin/       # Built-in assistants
+│           │   ├── rocket.yaml
+│           │   ├── tux.yaml
+│           │   └── focus.yaml
+│           └── samples/       # Sample configurations
+│               └── focus.yaml
+└── ~/.chatty/                # User data (created on init)
+    ├── config.json          # User settings
+    ├── chat_history_*.json  # Conversations
+    └── assistants/         # Custom assistants
+        └── *.yaml.sample   # Templates
 ```
 
-## Prerequisites
+## Troubleshooting
 
-- Go 1.16 or later
-- Ollama installed and running locally
-- The `llama3.2` model installed in Ollama
-
-## Installation
-
-1. Clone this repository:
-
-```bash
-git clone <your-repo-url>
-cd chatty
-```
-
-2. Make sure Ollama is running:
-
-```bash
-ollama serve
-```
-
-3. Install the llama3.2 model if you haven't already:
-
-```bash
-ollama pull llama3.2
-```
-
-4. Build the application:
-
-```bash
-# Using go build
-go build -o bin/chatty cmd/chatty/main.go
-
-# Or using the provided task file
-task build
-```
-
-## Usage
-
-### Basic Chat
-
-You can send messages in two ways:
-
-1. Without quotes (for simple messages):
-
-```bash
-./bin/chatty How are you doing today?
-```
-
-2. With quotes (required for messages containing special characters):
-
-```bash
-./bin/chatty "What's the meaning of life?"
-```
-
-### Special Commands
-
-```bash
-# Clear conversation history
-./bin/chatty --clear              # Clear all histories
-./bin/chatty --clear rocket      # Clear specific assistant's history
-./bin/chatty --clear "Data Scientist"  # Clear history for assistant with multi-word name
-
-# List available assistants
-./bin/chatty --list
-
-# Switch to a different assistant
-./bin/chatty --select rocket           # Single-word name
-./bin/chatty --select "Data Scientist" # Multi-word name
-
-# Show current assistant
-./bin/chatty --current
-```
-
-## Chat History
-
-Each assistant maintains their own chat history in `~/.chatty/`:
-
-- Files are named `chat_history_<assistant>.json`
-- Histories include:
-  - System message that sets the AI's behavior
-  - All user messages and AI responses
-  - Context preservation between conversations
-- Histories are automatically created on first use
-- Each assistant maintains independent conversation context
-
-## Customizing Assistants
-
-### Using Sample Assistants
-
-When you first run Chatty, it automatically creates sample assistant configurations in your home directory:
-
-1. Look for `.sample` files in `~/.chatty/assistants/`:
+1. If you see "Chatty is not initialized":
 
    ```bash
-   ls ~/.chatty/assistants/*.sample
+   chatty init
    ```
 
-2. Create your own assistant by copying a sample:
+2. If you get "invalid model" errors:
+
+   - Check available models: `ollama list`
+   - Update model in `~/.chatty/config.json`
+
+3. To start fresh:
 
    ```bash
-   cp ~/.chatty/assistants/focus.yaml.sample ~/.chatty/assistants/myassistant.yaml
+   rm -rf ~/.chatty
+   chatty init
    ```
 
-3. Edit the new file to customize your assistant:
-   ```bash
-   nano ~/.chatty/assistants/myassistant.yaml
-   ```
-
-### Assistant Configuration Fields
-
-Each assistant is defined by a YAML file with the following fields:
-
-```yaml
-# The name of your assistant (required)
-# Can be a single word or multiple words (e.g., "Data Scientist")
-# When using multi-word names in commands, remember to quote them:
-# ./chatty --select "Data Scientist"
-name: "Assistant Name"
-
-# The system message defines your assistant's personality (required)
-system_message: |
-  You are [assistant description].
-
-  1. Core Identity: [main role and characteristics]
-  2. Personality: [personality traits]
-  3. Communication: [communication style]
-  4. Approach: [how to handle tasks]
-  5. Knowledge: [areas of expertise]
-  6. Special Focus: [specific strengths]
-  7. Boundaries: [limitations and guidelines]
-
-# Choose an emoji that represents your assistant (required)
-emoji: "🤖"
-
-# Set the color for your assistant's name (required)
-# Use 256-color ANSI codes: \u001b[38;5;XXXm where XXX is 0-255
-label_color: "\u001b[38;5;75m" # Blue
-
-# Set the color for your assistant's responses (required)
-text_color: "\u001b[38;5;252m" # Light gray
-
-# A brief description of what your assistant does (required)
-description: "A brief description of the assistant"
-```
-
-### Color Customization
-
-The application supports 256-color ANSI codes for rich terminal colors:
-
-- Format: `\u001b[38;5;XXXm` where XXX is the color code (0-255)
-- Each assistant can have unique label and text colors
-- Use online ANSI color pickers to find appropriate codes
-- Common colors:
-  - 82: Bright green
-  - 220: Bright yellow
-  - 75: Bright blue
-  - 213: Bright magenta
-  - 252: Light gray
-
-You can find a complete color chart here: https://www.ditig.com/256-colors-cheat-sheet
-
-### Assistant Loading Order
-
-Assistants are loaded in the following order:
-
-1. User-defined assistants (from `~/.chatty/assistants/`)
-2. Built-in assistants (if not overridden by user assistants)
-
-This means you can:
-
-- Override built-in assistants by creating a file with the same name
-- Create entirely new assistants with unique names
-- Keep your custom assistants separate from the application
-
-### Best Practices
-
-When creating custom assistants:
-
-1. Use descriptive names that reflect the assistant's purpose
-2. Write clear and focused system messages
-3. Choose appropriate emojis that represent the role
-4. Use contrasting colors for readability
-5. Keep descriptions concise but informative
-6. Test the assistant with various queries
-7. Maintain conversation context appropriately
-
-### File Naming Conventions
-
-When creating your YAML files in `~/.chatty/assistants/`:
-
-1. Use lowercase letters for the file name: `data_scientist.yaml` (not `Data_Scientist.yaml`)
-2. Replace spaces with underscores: `machine_learning_expert.yaml` (not `machine learning expert.yaml`)
-3. Use `.yaml` extension (not `.yml`)
-4. Keep the file name simple and related to the assistant's name:
-
-   ```bash
-   # Good examples:
-   python_expert.yaml     # For an assistant named "Python Expert"
-   data_scientist.yaml    # For "Data Scientist"
-   ml_assistant.yaml      # For "Machine Learning Assistant"
-
-   # Avoid:
-   my_assistant_1.yaml    # Not descriptive
-   AI_Assistant.yaml      # Don't use uppercase
-   machine.learning.yaml  # Don't use dots
-   ```
-
-Note: The file name doesn't have to match the assistant's display name exactly. The display name is defined by the `name` field inside the YAML file and can contain spaces and proper capitalization.
+4. If Ollama connection fails:
+   - Ensure Ollama is running: `ollama serve`
+   - Check if the model is installed: `ollama list`
+   - Install missing model: `ollama pull <model>`
 
 ## Development
+
+### Prerequisites
+
+- Go 1.16 or later
+- Ollama installed and running
+- Required model installed in Ollama
 
 ### Building
 
 ```bash
-# Create a development build
+# Development build
 task build
 
 # Install to system
@@ -288,28 +242,18 @@ task clean
 
 ### Adding Features
 
-1. Create new assistant YAML files in `builtin/` for core assistants
-2. Add sample configurations in `samples/` for user reference
-3. Implement new features in `main.go` or `assistants.go`
-4. Follow the existing code structure and patterns
-
-## Error Handling
-
-The program handles various error cases:
-
-- Invalid command usage
-- Ollama server connection issues
-- File system errors
-- JSON parsing errors
-- Invalid assistant selection
-- Sample file copying issues
+1. Create assistant YAML files in `builtin/` for core assistants
+2. Add sample configurations in `samples/`
+3. Implement features in `main.go` or `assistants.go`
+4. Follow existing code patterns
 
 ## Notes
 
-- The chat history is maintained between sessions
-- The AI maintains context of previous conversations
-- Responses are streamed in real-time as they're generated
-- Assistant personalities can be switched at any time
-- The API endpoint can be changed to connect to remote Ollama instances
-- Each assistant maintains their unique personality and style
-- Sample assistants are provided as templates for customization
+- Run `chatty init` before first use
+- Chat history persists between sessions
+- Context is maintained per assistant
+- Responses stream in real-time
+- Assistants can be switched anytime
+- API endpoint configurable for remote Ollama
+- Each assistant maintains unique personality
+- Sample templates provided for customization

@@ -15,16 +15,14 @@ import (
 
 // Common directives that apply to all assistants
 const (
-	// Control whether common directives are included by default
-	includeCommonDirectives = true
+	// Default language setting (en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN)
+	defaultLanguageCode = "en-US"
 
-	// Language setting (en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN)
-	languageCode = "en-US"
+	// Default model to use if not specified in config
+	defaultModel = "llama3.2"
 
-	// Common directives template - for natural conversations
-	commonDirectivesTemplate = `Language: %s
-
-Chat like a human friend - be brief, casual, and engaging. Provide accurate information and acknowledge uncertainty. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
+	// Default common directives template - for natural conversations
+	defaultCommonDirectivesTemplate = `Always follow the specified language instruction above. Chat like a human friend - be brief, casual, and engaging. Provide accurate information and acknowledge uncertainty. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
 
 	// Built-in assistants directory
 	builtinDir = "builtin"
@@ -33,6 +31,14 @@ Chat like a human friend - be brief, casual, and engaging. Provide accurate info
 	// Sample assistants directory
 	samplesDir = "samples"
 )
+
+// Config holds the current configuration
+type Config struct {
+	CurrentAssistant string `json:"current_assistant"`
+	LanguageCode     string `json:"language_code,omitempty"`     // Optional: Override default language
+	CommonDirectives string `json:"common_directives,omitempty"` // Optional: Override default directives template
+	Model            string `json:"model,omitempty"`             // Optional: Override default model
+}
 
 // AssistantConfig holds all configuration for an assistant's identity and appearance
 type AssistantConfig struct {
@@ -68,13 +74,75 @@ var (
 	DefaultAssistant AssistantConfig
 )
 
+// GetCurrentConfig reads and returns the current configuration
+func GetCurrentConfig() (*Config, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	configPath := filepath.Join(homeDir, ".chatty", "config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return default config if file doesn't exist
+			return &Config{
+				CurrentAssistant: DefaultAssistant.Name,
+				LanguageCode:     defaultLanguageCode,
+				Model:            defaultModel,
+			}, nil
+		}
+		return nil, err
+	}
+
+	var config Config
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+
+	// Set defaults if not specified
+	if config.LanguageCode == "" {
+		config.LanguageCode = defaultLanguageCode
+	}
+	if config.Model == "" {
+		config.Model = defaultModel
+	}
+
+	return &config, nil
+}
+
+// getCommonDirectives returns the common directives with the current language code
+func getCommonDirectives() (string, error) {
+	config, err := GetCurrentConfig()
+	if err != nil {
+		// Fallback to defaults on error
+		return fmt.Sprintf("You MUST respond in %s language.\n\n%s", defaultLanguageCode, defaultCommonDirectivesTemplate), nil
+	}
+
+	// Get language code
+	languageCode := config.LanguageCode
+	if languageCode == "" {
+		languageCode = defaultLanguageCode
+	}
+
+	// Get directives
+	directives := defaultCommonDirectivesTemplate
+	if config.CommonDirectives != "" {
+		directives = config.CommonDirectives
+	}
+
+	// Make language instruction explicit and mandatory
+	return fmt.Sprintf("You MUST respond in %s language.\n\n%s", languageCode, directives), nil
+}
+
 // Get complete system message including directives
 func (a *AssistantConfig) GetFullSystemMessage() string {
-	if includeCommonDirectives {
-		directives := fmt.Sprintf(commonDirectivesTemplate, languageCode)
-		return fmt.Sprintf("%s\n%s", a.SystemMessage, directives)
+	directives, err := getCommonDirectives()
+	if err != nil {
+		// Fallback to defaults on error
+		directives = fmt.Sprintf("Language: %s\n\n%s", defaultLanguageCode, defaultCommonDirectivesTemplate)
 	}
-	return a.SystemMessage
+	return fmt.Sprintf("%s\n%s", a.SystemMessage, directives)
 }
 
 // getUserAssistantsDir returns the path to user's assistants directory
@@ -107,8 +175,8 @@ func loadAssistantFile(path string, isBuiltin bool) (AssistantConfig, error) {
 	return assistant, nil
 }
 
-// loadAssistants loads all assistants from both built-in and user directories
-func loadAssistants() error {
+// LoadAssistants loads all assistants from both built-in and user directories
+func LoadAssistants() error {
 	cache.mutex.Lock()
 	defer cache.mutex.Unlock()
 
@@ -260,7 +328,7 @@ func checkForUpdates() bool {
 // refreshIfNeeded reloads assistants if any files have been modified
 func refreshIfNeeded() {
 	if checkForUpdates() {
-		if err := loadAssistants(); err != nil {
+		if err := LoadAssistants(); err != nil {
 			fmt.Printf("Warning: Failed to reload assistants: %v\n", err)
 		}
 	}
@@ -381,8 +449,8 @@ func GetHistoryFileName(assistantName string) string {
 	return fmt.Sprintf("chat_history_%s.json", strings.ToLower(assistantName))
 }
 
-// copySampleAssistants copies sample assistant configurations to user directory
-func copySampleAssistants() error {
+// CopySampleAssistants copies sample assistant configurations to user directory
+func CopySampleAssistants() error {
 	// Get the user's assistants directory
 	userDir, err := getUserAssistantsDir()
 	if err != nil {
@@ -433,26 +501,121 @@ func copySampleAssistants() error {
 	return nil
 }
 
+// CreateDefaultConfig creates a config.json with default values if it doesn't exist
+func CreateDefaultConfig() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(homeDir, ".chatty", "config.json")
+	
+	// Check if config already exists
+	if _, err := os.Stat(configPath); err == nil {
+		return nil // Config exists, do nothing
+	}
+
+	// Create default config
+	config := Config{
+		CurrentAssistant: DefaultAssistant.Name,
+		LanguageCode:     defaultLanguageCode,
+		Model:            defaultModel,
+		CommonDirectives: defaultCommonDirectivesTemplate,
+	}
+
+	data, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	// Ensure directory exists
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, data, 0644)
+}
+
+// UpdateCurrentAssistant updates only the current_assistant field in config
+func UpdateCurrentAssistant(name string) error {
+	config, err := GetCurrentConfig()
+	if err != nil {
+		// If config doesn't exist, create it
+		config = &Config{
+			CurrentAssistant: name,
+			LanguageCode:     defaultLanguageCode,
+			Model:            defaultModel,
+			CommonDirectives: defaultCommonDirectivesTemplate,
+		}
+	} else {
+		config.CurrentAssistant = name
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(homeDir, ".chatty", "config.json")
+	data, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, data, 0644)
+}
+
 // Initialize assistants on package load
 func init() {
-	// Create user directories on startup
-	userDir, err := getUserAssistantsDir()
+	// Only initialize the cache
+	cache = &assistantCache{
+		assistants:   make(map[string]AssistantConfig),
+		builtinOrder: make([]string, 0),
+		userOrder:    make([]string, 0),
+		lastUpdate:   make(map[string]time.Time),
+	}
+
+	// Load built-in assistants only (no file system operations)
+	_, filename, _, _ := runtime.Caller(0)
+	builtinPath := filepath.Join(filepath.Dir(filename), builtinDir)
+	
+	builtinFiles, err := os.ReadDir(builtinPath)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to get user assistants directory: %v", err))
+		panic(fmt.Sprintf("Failed to read builtin assistants directory: %v", err))
 	}
 
-	if err := os.MkdirAll(userDir, 0755); err != nil {
-		panic(fmt.Sprintf("Failed to create user assistants directory: %v", err))
+	for _, file := range builtinFiles {
+		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml")) {
+			path := filepath.Join(builtinPath, file.Name())
+			assistant, err := loadAssistantFile(path, true)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to load built-in assistant %s: %v", file.Name(), err))
+			}
+			
+			name := strings.ToLower(assistant.Name)
+			cache.assistants[name] = assistant
+			cache.builtinOrder = append(cache.builtinOrder, name)
+			cache.lastUpdate[path] = time.Now()
+
+			if assistant.IsDefault && DefaultAssistant.Name == "" {
+				DefaultAssistant = assistant
+			}
+		}
 	}
 
-	// Copy sample assistants to user directory
-	if err := copySampleAssistants(); err != nil {
-		fmt.Printf("Warning: Failed to copy sample assistants: %v\n", err)
-	}
-
-	// Load all assistants
-	if err := loadAssistants(); err != nil {
-		panic(fmt.Sprintf("Failed to initialize assistants: %v", err))
+	// Set default assistant if none was specified
+	if DefaultAssistant.Name == "" && len(cache.assistants) > 0 {
+		// Try to use Rocket as default if available
+		if assistant, ok := cache.assistants["rocket"]; ok {
+			DefaultAssistant = assistant
+		} else {
+			// Otherwise use the first available assistant
+			for _, assistant := range cache.assistants {
+				DefaultAssistant = assistant
+				break
+			}
+		}
 	}
 }
 
@@ -464,4 +627,13 @@ func (a *AssistantConfig) GetFormattedLabelColor() string {
 // GetFormattedTextColor returns the properly formatted ANSI color code
 func (a *AssistantConfig) GetFormattedTextColor() string {
 	return a.TextColor
+}
+
+// GetCurrentModel returns the model to use from config
+func GetCurrentModel() string {
+	config, err := GetCurrentConfig()
+	if err != nil {
+		return defaultModel
+	}
+	return config.Model
 } 

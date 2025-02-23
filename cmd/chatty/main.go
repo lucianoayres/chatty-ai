@@ -33,7 +33,6 @@ type ChatResponse struct {
 
 const (
     // Core configuration
-    ollamaModel   = "llama3.2"               // Model to use for chat
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
     ollamaURLPath = "/api/chat"              // API endpoint path
     historyDir    = ".chatty"               // Directory to store chat histories
@@ -439,19 +438,132 @@ func makeAPIRequest(jsonData []byte, history []Message) (*http.Response, error) 
         return nil, fmt.Errorf("error connecting to Ollama: %v", err)
     }
 
+    // Check for error responses
+    if resp.StatusCode != http.StatusOK {
+        defer resp.Body.Close()
+        
+        // Try to read error details
+        var errorResponse struct {
+            Error string `json:"error"`
+        }
+        body, _ := io.ReadAll(resp.Body)
+        if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
+            if strings.Contains(errorResponse.Error, "model") {
+                return nil, fmt.Errorf("invalid model '%s'. Please check your config.json file", assistants.GetCurrentModel())
+            }
+            return nil, fmt.Errorf("API error: %s", errorResponse.Error)
+        }
+        
+        return nil, fmt.Errorf("API error (status %d): failed to process request", resp.StatusCode)
+    }
+
     return resp, nil
 }
 
+// Check if chatty is initialized
+func isChattyInitialized() bool {
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        return false
+    }
+    
+    chattyDir := filepath.Join(homeDir, historyDir)
+    if _, err := os.Stat(chattyDir); os.IsNotExist(err) {
+        return false
+    }
+    
+    return true
+}
+
+// Initialize chatty environment
+func initializeChatty() error {
+    fmt.Println("Initializing Chatty environment...")
+    
+    // Create necessary directories and files
+    homeDir, err := os.UserHomeDir()
+    if err != nil {
+        return fmt.Errorf("failed to get home directory: %v", err)
+    }
+
+    // Create .chatty directory
+    chattyDir := filepath.Join(homeDir, historyDir)
+    if err := os.MkdirAll(chattyDir, 0755); err != nil {
+        return fmt.Errorf("failed to create chatty directory: %v", err)
+    }
+    fmt.Println("✓ Created ~/.chatty directory")
+
+    // Initialize assistants
+    if err := assistants.CreateDefaultConfig(); err != nil {
+        return fmt.Errorf("failed to create default config: %v", err)
+    }
+    fmt.Println("✓ Created default configuration")
+
+    // Create assistants directory
+    assistantsDir := filepath.Join(chattyDir, "assistants")
+    if err := os.MkdirAll(assistantsDir, 0755); err != nil {
+        return fmt.Errorf("failed to create assistants directory: %v", err)
+    }
+    fmt.Println("✓ Created assistants directory")
+
+    // Copy sample assistants
+    if err := assistants.CopySampleAssistants(); err != nil {
+        fmt.Printf("Warning: Failed to copy sample assistants: %v\n", err)
+    } else {
+        fmt.Println("✓ Copied sample assistant configurations")
+    }
+
+    fmt.Println("\nChatty has been successfully initialized!")
+    fmt.Println("\nYou can now:")
+    fmt.Println("1. List available assistants:   chatty --list")
+    fmt.Println("2. Select an assistant:         chatty --select <name>")
+    fmt.Println("3. Start chatting:              chatty \"Your message here\"")
+    fmt.Println("\nEnjoy your conversations! 🚀")
+    
+    return nil
+}
+
 func main() {
+    // Check if this is the init command
+    if len(os.Args) > 1 && os.Args[1] == "init" {
+        if isChattyInitialized() {
+            fmt.Println("Chatty is already initialized.")
+            fmt.Println("To start over, remove the ~/.chatty directory and run 'chatty init' again.")
+            return
+        }
+        if err := initializeChatty(); err != nil {
+            fmt.Printf("Error initializing Chatty: %v\n", err)
+            os.Exit(1)
+        }
+        return
+    }
+
+    // For all other commands, check if chatty is initialized
+    if !isChattyInitialized() {
+        fmt.Println("Chatty is not initialized.")
+        fmt.Println("Run 'chatty init' first to configure your environment.")
+        os.Exit(1)
+    }
+
+    // Now that we know chatty is initialized, load assistants
+    if err := assistants.LoadAssistants(); err != nil {
+        fmt.Printf("Error loading assistants: %v\n", err)
+        os.Exit(1)
+    }
+
     // Load configuration at startup
-    if err := loadConfig(); err != nil {
+    config, err := assistants.GetCurrentConfig()
+    if err != nil {
         fmt.Printf("Error loading config: %v\n", err)
         // Continue with default assistant
+    } else {
+        // Set current assistant from config
+        currentAssistant = assistants.GetAssistantConfig(config.CurrentAssistant)
     }
 
     if len(os.Args) < 2 {
-        fmt.Println("Usage: go run main.go \"Your message here\"")
+        fmt.Println("Usage: chatty \"Your message here\"")
         fmt.Println("Special commands:")
+        fmt.Println("  init                          Initialize Chatty environment")
         fmt.Println("  --clear [all|assistant_name]  Clear chat history (all or specific assistant)")
         fmt.Println("  --list                       List available assistants")
         fmt.Println("  --select <assistant_name>    Select an assistant")
@@ -492,7 +604,7 @@ func main() {
         }
         
         currentAssistant = assistants.GetAssistantConfig(os.Args[2])
-        if err := saveConfig(); err != nil {
+        if err := assistants.UpdateCurrentAssistant(os.Args[2]); err != nil {
             fmt.Printf("Error saving assistant selection: %v\n", err)
             return
         }
@@ -522,7 +634,7 @@ func main() {
 
     // Prepare the request
     chatReq := ChatRequest{
-        Model:    ollamaModel,
+        Model:    assistants.GetCurrentModel(),
         Messages: history,
         Stream:   true,
     }
@@ -546,7 +658,11 @@ func main() {
     resp, err := makeAPIRequest(jsonData, history)
     if err != nil {
         anim.stopAnimation()
-        fmt.Printf("Error making request: %v\n", err)
+        fmt.Printf("\nError: %v\n", err)
+        if strings.Contains(err.Error(), "invalid model") {
+            fmt.Printf("\nHint: Edit ~/.chatty/config.json to set a valid model name\n")
+            fmt.Printf("Available models can be listed with: ollama list\n")
+        }
         return
     }
     defer resp.Body.Close()
