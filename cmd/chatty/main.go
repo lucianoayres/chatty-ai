@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"chatty/cmd/chatty/assistants"
+	"chatty/cmd/chatty/agents"
 )
 
 type Message struct {
@@ -35,7 +35,7 @@ type ChatResponse struct {
 
 // Add these new types after the existing types
 type ConversationConfig struct {
-    Assistants []string
+    Agents []string
     Starter    string
     Turns      int  // 0 means infinite
     Current    int  // Current turn
@@ -46,10 +46,10 @@ type ConversationHistory struct {
     Messages []Message
 }
 
-// Add this new animation type that includes assistant info
+// Add this new animation type that includes agent info
 type ConversationAnimation struct {
     stopChan chan bool
-    assistant assistants.AssistantConfig
+    agent agents.AgentConfig
 }
 
 const (
@@ -57,7 +57,7 @@ const (
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
     ollamaURLPath = "/api/chat"              // API endpoint path
     historyDir    = ".chatty"               // Directory to store chat histories
-    configFile    = "config.json"           // File to store current assistant selection
+    configFile    = "config.json"           // File to store current agent selection
 
     // Request timeouts and retry settings
     maxRetries = 5                          // Increased from 3 to 5
@@ -85,7 +85,7 @@ const (
     frameDelay   = 200          // Milliseconds between animation frames
 
     // Conversation context template
-    conversationContextTemplate = `You are %s (%s) participating in a group conversation with other AI assistants and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
+    conversationContextTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
 
     Current participants (excluding yourself):
     %s
@@ -128,7 +128,7 @@ const (
     timeValueColor = "\033[38;5;252m"  // Light gray for values
     startTimeEmoji = "🗓️"  // Calendar emoji
 
-    // Conversation mode timeouts (much higher due to multiple assistants and longer responses)
+    // Conversation mode timeouts (much higher due to multiple agents and longer responses)
     converseRequestTimeout = 300 * time.Second  // Initial connection timeout for converse mode
     converseReadTimeout = 300 * time.Second    // Timeout for reading each chunk in converse mode
     converseWriteTimeout = 300 * time.Second    // Timeout for writing requests in converse mode
@@ -156,7 +156,7 @@ func startAnimation() *Animation {
                 return
             default:
                 // Clear line and print current frame
-                fmt.Printf("\r%s%s", colorize(getAssistantLabel(), currentAssistant.LabelColor), frames[frameIndex])
+                fmt.Printf("\r%s%s", colorize(getAgentLabel(), currentAgent.LabelColor), frames[frameIndex])
                 
                 // Move to next frame
                 frameIndex = (frameIndex + 1) % len(frames)
@@ -173,70 +173,19 @@ func startAnimation() *Animation {
 func (a *Animation) stopAnimation() {
     a.stopChan <- true
     // Clear the animation and prepare for response
-    fmt.Printf("\r%s", colorize(getAssistantLabel(), currentAssistant.LabelColor))
+    fmt.Printf("\r%s", colorize(getAgentLabel(), currentAgent.LabelColor))
 }
 
 type Config struct {
-    CurrentAssistant string `json:"current_assistant"`
+    CurrentAgent string `json:"current_agent"`
 }
 
-// Current assistant configuration
-var currentAssistant = assistants.DefaultAssistant
+// Current agent configuration
+var currentAgent = agents.DefaultAgent
 
-// Save current assistant selection to config file
-func saveConfig() error {
-    homeDir, err := os.UserHomeDir()
-    if err != nil {
-        return err
-    }
-    
-    baseDir := filepath.Join(homeDir, historyDir)
-    if err := os.MkdirAll(baseDir, 0755); err != nil {
-        return err
-    }
-    
-    config := Config{
-        CurrentAssistant: currentAssistant.Name,
-    }
-    
-    data, err := json.MarshalIndent(config, "", "    ")
-    if err != nil {
-        return err
-    }
-    
-    return os.WriteFile(filepath.Join(baseDir, configFile), data, 0644)
-}
-
-// Load current assistant selection from config file
-func loadConfig() error {
-    homeDir, err := os.UserHomeDir()
-    if err != nil {
-        return err
-    }
-    
-    configPath := filepath.Join(homeDir, historyDir, configFile)
-    data, err := os.ReadFile(configPath)
-    if err != nil {
-        if os.IsNotExist(err) {
-            // Use default if config doesn't exist
-            return nil
-        }
-        return err
-    }
-    
-    var config Config
-    if err := json.Unmarshal(data, &config); err != nil {
-        return err
-    }
-    
-    // Set current assistant from config
-    currentAssistant = assistants.GetAssistantConfig(config.CurrentAssistant)
-    return nil
-}
-
-// Get system message using assistant name
+// Get system message using agent name
 func getSystemMessage() string {
-    return currentAssistant.GetFullSystemMessage()
+    return currentAgent.GetFullSystemMessage()
 }
 
 // Format text with color if enabled
@@ -247,17 +196,17 @@ func colorize(text, color string) string {
     return text
 }
 
-// Get formatted assistant label with optional emoji
-func getAssistantLabel() string {
-    label := currentAssistant.Name
+// Get formatted agent label with optional emoji
+func getAgentLabel() string {
+    label := currentAgent.Name
     if useEmoji {
-        return currentAssistant.Emoji + " " + label + ": "
+        return currentAgent.Emoji + " " + label + ": "
     }
     return label + ": "
 }
 
-// Get the history file path for a specific assistant
-func getHistoryPathForAssistant(assistantName string) (string, error) {
+// Get the history file path for a specific agent
+func getHistoryPathForAgent(agentName string) (string, error) {
     homeDir, err := os.UserHomeDir()
     if err != nil {
         return "", err
@@ -267,13 +216,13 @@ func getHistoryPathForAssistant(assistantName string) (string, error) {
         return "", err
     }
     
-    historyFile := assistants.GetHistoryFileName(assistantName)
+    historyFile := agents.GetHistoryFileName(agentName)
     return filepath.Join(baseDir, historyFile), nil
 }
 
-// Get the history file path for the current assistant
+// Get the history file path for the current agent
 func getHistoryPath() (string, error) {
-    return getHistoryPathForAssistant(currentAssistant.Name)
+    return getHistoryPathForAgent(currentAgent.Name)
 }
 
 // Cache for chat histories
@@ -282,7 +231,7 @@ var historyCache = make(map[string][]Message)
 // loadHistory loads chat history with caching
 func loadHistory() ([]Message, error) {
     // Check cache first
-    if history, exists := historyCache[currentAssistant.Name]; exists {
+    if history, exists := historyCache[currentAgent.Name]; exists {
         return history, nil
     }
 
@@ -295,7 +244,7 @@ func loadHistory() ([]Message, error) {
     // Quick check if file exists without reading it
     if _, err := os.Stat(historyPath); os.IsNotExist(err) {
         history := initializeChat()
-        historyCache[currentAssistant.Name] = history
+        historyCache[currentAgent.Name] = history
         return history, nil
     }
 
@@ -308,7 +257,7 @@ func loadHistory() ([]Message, error) {
     var history []Message
     if err := json.Unmarshal(data, &history); err != nil {
         history = initializeChat()
-        historyCache[currentAssistant.Name] = history
+        historyCache[currentAgent.Name] = history
         return history, nil
     }
 
@@ -324,8 +273,8 @@ func loadHistory() ([]Message, error) {
         }
         copy(newHistory[1:], history)
         history = newHistory
-    } else if !strings.Contains(history[0].Content, currentAssistant.Name) {
-        // Update system message if it's for a different assistant
+    } else if !strings.Contains(history[0].Content, currentAgent.Name) {
+        // Update system message if it's for a different agent
         history[0] = Message{
             Role:    "system",
             Content: getSystemMessage(),
@@ -333,14 +282,14 @@ func loadHistory() ([]Message, error) {
     }
 
     // Cache the loaded history
-    historyCache[currentAssistant.Name] = history
+    historyCache[currentAgent.Name] = history
     return history, nil
 }
 
 // saveHistory saves chat history and updates cache
 func saveHistory(history []Message) error {
     // Update cache
-    historyCache[currentAssistant.Name] = history
+    historyCache[currentAgent.Name] = history
 
     // Ensure directory exists before trying to save
     historyPath, err := getHistoryPath()
@@ -377,7 +326,7 @@ func clearHistory(target string) error {
             if os.IsNotExist(err) {
                 // Clear cache
                 historyCache = make(map[string][]Message)
-                fmt.Println("No chat histories found. Fresh conversations will be started for each assistant.")
+                fmt.Println("No chat histories found. Fresh conversations will be started for each agent.")
                 return nil
             }
             return fmt.Errorf("failed to read history directory: %v", err)
@@ -398,26 +347,26 @@ func clearHistory(target string) error {
         historyCache = make(map[string][]Message)
         
         if cleared {
-            fmt.Println("All chat histories have been cleared. Fresh conversations will be started for each assistant.")
+            fmt.Println("All chat histories have been cleared. Fresh conversations will be started for each agent.")
         } else {
-            fmt.Println("No chat histories found. Fresh conversations will be started for each assistant.")
+            fmt.Println("No chat histories found. Fresh conversations will be started for each agent.")
         }
         return nil
     }
 
-    // Clear specific assistant's history
-    if !assistants.IsValidAssistant(target) {
-        return fmt.Errorf("invalid assistant name: %s", target)
+    // Clear specific agent's history
+    if !agents.IsValidAgent(target) {
+        return fmt.Errorf("invalid agent name: %s", target)
     }
 
-    // Get proper case for assistant name
-    assistantConfig := assistants.GetAssistantConfig(target)
-    properName := assistantConfig.Name
+    // Get proper case for agent name
+    agentConfig := agents.GetAgentConfig(target)
+    properName := agentConfig.Name
 
-    // Clear cache for this assistant
+    // Clear cache for this agent
     delete(historyCache, properName)
 
-    historyPath, err := getHistoryPathForAssistant(target)
+    historyPath, err := getHistoryPathForAgent(target)
     if err != nil {
         return fmt.Errorf("failed to get history path: %v", err)
     }
@@ -461,10 +410,10 @@ func getOllamaAPI() string {
 var httpClient = &http.Client{}
 
 // Update the animation functions for conversation mode
-func startConversationAnimation(assistant assistants.AssistantConfig) *ConversationAnimation {
+func startConversationAnimation(agent agents.AgentConfig) *ConversationAnimation {
     anim := &ConversationAnimation{
         stopChan: make(chan bool),
-        assistant: assistant,
+        agent: agent,
     }
     
     // Start animation in background
@@ -477,9 +426,9 @@ func startConversationAnimation(assistant assistants.AssistantConfig) *Conversat
             case <-anim.stopChan:
                 return
             default:
-                // Clear line and print current frame with correct assistant label
-                label := fmt.Sprintf("%s %s: ", assistant.Emoji, assistant.Name)
-                fmt.Printf("\r%s%s", colorize(label, assistant.LabelColor), frames[frameIndex])
+                // Clear line and print current frame with correct agent label
+                label := fmt.Sprintf("%s %s: ", agent.Emoji, agent.Name)
+                fmt.Printf("\r%s%s", colorize(label, agent.LabelColor), frames[frameIndex])
                 
                 // Move to next frame
                 frameIndex = (frameIndex + 1) % len(frames)
@@ -495,20 +444,20 @@ func startConversationAnimation(assistant assistants.AssistantConfig) *Conversat
 // Stop the conversation animation
 func (a *ConversationAnimation) stopAnimation() {
     a.stopChan <- true
-    // Clear the animation and prepare for response with correct assistant label
-    label := fmt.Sprintf("%s %s: ", a.assistant.Emoji, a.assistant.Name)
-    fmt.Printf("\r%s", colorize(label, a.assistant.LabelColor))
+    // Clear the animation and prepare for response with correct agent label
+    label := fmt.Sprintf("%s %s: ", a.agent.Emoji, a.agent.Name)
+    fmt.Printf("\r%s", colorize(label, a.agent.LabelColor))
 }
 
 // Update makeAPIRequestWithRetry function
-func makeAPIRequestWithRetry(jsonData []byte, history []Message, assistant string, isConversation bool) (*http.Response, error) {
+func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, isConversation bool) (*http.Response, error) {
     var lastErr error
     retryDelay := initialRetryDelay
 
     for attempt := 1; attempt <= maxRetries; attempt++ {
         // Show retry attempt if not first try
         if attempt > 1 {
-            fmt.Printf("\nRetrying request for %s (attempt %d/%d)...\n", assistant, attempt, maxRetries)
+            fmt.Printf("\nRetrying request for %s (attempt %d/%d)...\n", agent, attempt, maxRetries)
         }
 
         resp, err := makeAPIRequest(jsonData, history, isConversation)
@@ -600,7 +549,7 @@ func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*h
         body, _ := io.ReadAll(resp.Body)
         if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
             if strings.Contains(errorResponse.Error, "model") {
-                return nil, fmt.Errorf("invalid model '%s' - please check your config.json file", assistants.GetCurrentModel())
+                return nil, fmt.Errorf("invalid model '%s' - please check your config.json file", agents.GetCurrentModel())
             }
             return nil, fmt.Errorf("API error: %s", errorResponse.Error)
         }
@@ -695,42 +644,42 @@ func formatElapsedTime(start, current time.Time) string {
     return strings.Join(parts, ", ")
 }
 
-// Update the handleMultiAssistantConversation function
-func handleMultiAssistantConversation(config ConversationConfig) error {
-    if len(config.Assistants) < 2 {
-        return fmt.Errorf("at least two assistants are required for a conversation")
+// Update the handleMultiAgentConversation function
+func handleMultiAgentConversation(config ConversationConfig) error {
+    if len(config.Agents) < 2 {
+        return fmt.Errorf("at least two agents are required for a conversation")
     }
 
-    // Check maximum number of assistants
-    const maxAssistants = 15
-    if len(config.Assistants) > maxAssistants {
-        return fmt.Errorf("too many assistants: maximum allowed is %d, but got %d", maxAssistants, len(config.Assistants))
+    // Check maximum number of agents
+    const maxAgents = 15
+    if len(config.Agents) > maxAgents {
+        return fmt.Errorf("too many agents: maximum allowed is %d, but got %d", maxAgents, len(config.Agents))
     }
 
-    // Check for duplicate assistants
+    // Check for duplicate agents
     seen := make(map[string]bool)
-    for _, name := range config.Assistants {
-        // Convert to proper case using GetAssistantConfig to ensure consistent comparison
-        properName := assistants.GetAssistantConfig(name).Name
+    for _, name := range config.Agents {
+        // Convert to proper case using GetAgentConfig to ensure consistent comparison
+        properName := agents.GetAgentConfig(name).Name
         if seen[properName] {
-            return fmt.Errorf("duplicate assistant detected: %s (each assistant can only be included once)", properName)
+            return fmt.Errorf("duplicate agent detected: %s (each agent can only be included once)", properName)
         }
         seen[properName] = true
     }
 
-    // Validate all assistants exist
-    assistantConfigs := make([]assistants.AssistantConfig, len(config.Assistants))
-    for i, name := range config.Assistants {
-        if !assistants.IsValidAssistant(name) {
-            return fmt.Errorf("invalid assistant name: %s", name)
+    // Validate all agents exist
+    agentConfigs := make([]agents.AgentConfig, len(config.Agents))
+    for i, name := range config.Agents {
+        if !agents.IsValidAgent(name) {
+            return fmt.Errorf("invalid agent name: %s", name)
         }
-        assistantConfigs[i] = assistants.GetAssistantConfig(name)
+        agentConfigs[i] = agents.GetAgentConfig(name)
     }
 
     fmt.Println() // Add top margin
-    fmt.Printf("Starting conversation between %d assistants:\n", len(config.Assistants))
-    for i, assistant := range assistantConfigs {
-        fmt.Printf("%d. %s %s\n", i+1, assistant.Emoji, assistant.Name)
+    fmt.Printf("Starting conversation between %d agents:\n", len(config.Agents))
+    for i, agent := range agentConfigs {
+        fmt.Printf("%d. %s %s\n", i+1, agent.Emoji, agent.Name)
     }
     fmt.Println() // Single line margin at bottom
 
@@ -743,13 +692,13 @@ func handleMultiAssistantConversation(config ConversationConfig) error {
     var conversationLog strings.Builder
     conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", config.Starter))
 
-    // Initialize conversation histories for each assistant
-    histories := make([][]Message, len(assistantConfigs))
-    for i, assistant := range assistantConfigs {
+    // Initialize conversation histories for each agent
+    histories := make([][]Message, len(agentConfigs))
+    for i, agent := range agentConfigs {
         // Initialize with system message and conversation context
         histories[i] = []Message{{
             Role:    "system",
-            Content: assistant.GetFullSystemMessage(),
+            Content: agent.GetFullSystemMessage(),
         }}
     }
 
@@ -814,19 +763,19 @@ func handleMultiAssistantConversation(config ConversationConfig) error {
             fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
         }
 
-        for i, assistant := range assistantConfigs {
+        for i, agent := range agentConfigs {
             // Print margins
             for i := 0; i < converseMargin; i++ {
                 fmt.Println()
             }
             
-            // Start animation with correct assistant
-            anim := startConversationAnimation(assistant)
+            // Start animation with correct agent
+            anim := startConversationAnimation(agent)
 
-            // Build participants list excluding current assistant
+            // Build participants list excluding current agent
             var participants strings.Builder
-            for j, other := range assistantConfigs {
-                if j != i {  // Skip current assistant
+            for j, other := range agentConfigs {
+                if j != i {  // Skip current agent
                     participants.WriteString(fmt.Sprintf("%d. %s (%s) - %s\n", 
                         j+1, 
                         other.Name, 
@@ -835,26 +784,26 @@ func handleMultiAssistantConversation(config ConversationConfig) error {
                 }
             }
             participants.WriteString(fmt.Sprintf("%d. User (👤) - Human participant guiding the conversation\n", 
-                len(assistantConfigs)))
+                len(agentConfigs)))
 
             // Get recent conversation history
             recentHistory := getRecentConversationHistory(conversationLog.String())
 
             // Create conversation context with identity reinforcement
             context := fmt.Sprintf(conversationContextTemplate,
-                assistant.Name,
-                assistant.Emoji,
-                assistant.Name,
+                agent.Name,
+                agent.Emoji,
+                agent.Name,
                 participants.String(),
                 recentHistory,  // Use recent history instead of full history
                 lastSpeaker,
                 currentMessage,
-                assistant.Name)
+                agent.Name)
 
-            // Reset this assistant's history to keep context minimal
+            // Reset this agent's history to keep context minimal
             histories[i] = []Message{{
                 Role:    "system",
-                Content: assistant.GetFullSystemMessage(),
+                Content: agent.GetFullSystemMessage(),
             }}
 
             // Add only the current context
@@ -865,7 +814,7 @@ func handleMultiAssistantConversation(config ConversationConfig) error {
 
             // Prepare the request with full conversation history
             chatReq := ChatRequest{
-                Model:    assistants.GetCurrentModel(),
+                Model:    agents.GetCurrentModel(),
                 Messages: histories[i],
                 Stream:   true,
             }
@@ -873,45 +822,45 @@ func handleMultiAssistantConversation(config ConversationConfig) error {
             jsonData, err := json.Marshal(chatReq)
             if err != nil {
                 anim.stopAnimation()
-                return fmt.Errorf("error marshaling request for %s: %v", assistant.Name, err)
+                return fmt.Errorf("error marshaling request for %s: %v", agent.Name, err)
             }
 
             // Make the API request with retry
-            resp, err := makeAPIRequestWithRetry(jsonData, histories[i], assistant.Name, true)
+            resp, err := makeAPIRequestWithRetry(jsonData, histories[i], agent.Name, true)
             if err != nil {
                 anim.stopAnimation()
-                return fmt.Errorf("error making request for %s: %v", assistant.Name, err)
+                return fmt.Errorf("error making request for %s: %v", agent.Name, err)
             }
 
             // Process the response
             fullResponseText, err := processStreamResponse(resp, anim, true)
             if err != nil {
-                return fmt.Errorf("error processing response from %s: %v", assistant.Name, err)
+                return fmt.Errorf("error processing response from %s: %v", agent.Name, err)
             }
 
-            // Add the assistant's response to their history
+            // Add the agent's response to their history
             histories[i] = append(histories[i], Message{
-                Role:    "assistant",
+                Role:    "agent",
                 Content: fullResponseText,
             })
 
             // Update conversation log
             conversationLog.WriteString(fmt.Sprintf("%s %s: %s\n", 
-                assistant.Emoji, 
-                assistant.Name, 
+                agent.Emoji, 
+                agent.Name, 
                 fullResponseText))
 
             // Update for next iteration
             currentMessage = fullResponseText
-            lastSpeaker = assistant.Name
+            lastSpeaker = agent.Name
 
             // Print margins
             for i := 0; i < converseMargin; i++ {
                 fmt.Println()
             }
 
-            // If this is the last assistant in the turn
-            if i == len(assistantConfigs)-1 {
+            // If this is the last agent in the turn
+            if i == len(agentConfigs)-1 {
                 // Check if we should continue
                 if config.Turns > 0 && currentTurn >= config.Turns {
                     fmt.Printf("\nConversation completed after %d turns.\n", config.Turns)
@@ -1012,9 +961,9 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
         var textColor string
         switch a := anim.(type) {
         case *Animation:
-            textColor = currentAssistant.TextColor
+            textColor = currentAgent.TextColor
         case *ConversationAnimation:
-            textColor = a.assistant.TextColor
+            textColor = a.agent.TextColor
         }
         
         fmt.Print(colorize(streamResp.Message.Content, textColor))
@@ -1058,42 +1007,42 @@ func initializeChatty() error {
     }
     fmt.Println("✓ Created ~/.chatty directory")
 
-    // Initialize assistants
-    if err := assistants.CreateDefaultConfig(); err != nil {
+    // Initialize agents
+    if err := agents.CreateDefaultConfig(); err != nil {
         return fmt.Errorf("failed to create default config: %v", err)
     }
     fmt.Println("✓ Created default configuration")
 
-    // Create assistants directory
-    assistantsDir := filepath.Join(chattyDir, "assistants")
-    if err := os.MkdirAll(assistantsDir, 0755); err != nil {
-        return fmt.Errorf("failed to create assistants directory: %v", err)
+    // Create agents directory
+    agentsDir := filepath.Join(chattyDir, "agents")
+    if err := os.MkdirAll(agentsDir, 0755); err != nil {
+        return fmt.Errorf("failed to create agents directory: %v", err)
     }
-    fmt.Println("✓ Created assistants directory")
+    fmt.Println("✓ Created agents directory")
 
-    // Copy sample assistants
-    if err := assistants.CopySampleAssistants(); err != nil {
-        fmt.Printf("Warning: Failed to copy sample assistants: %v\n", err)
+    // Copy sample agents
+    if err := agents.CopySampleAgents(); err != nil {
+        fmt.Printf("Warning: Failed to copy sample agents: %v\n", err)
     } else {
-        fmt.Println("✓ Copied sample assistant configurations")
+        fmt.Println("✓ Copied sample agent configurations")
     }
 
     fmt.Println("\nChatty has been successfully initialized!")
     fmt.Println("\nYou can now:")
-    fmt.Println("1. List available assistants:   chatty --list")
-    fmt.Println("2. Select an assistant:         chatty --select <name>")
+    fmt.Println("1. List available agents:   chatty --list")
+    fmt.Println("2. Select an agent:         chatty --select <name>")
     fmt.Println("3. Start chatting:              chatty \"Your message here\"")
     fmt.Println("\nEnjoy your conversations! 🚀")
     
     return nil
 }
 
-// Add this new function before handleMultiAssistantConversation
-func makeAssistantRequest(assistant assistants.AssistantConfig, message string) (*http.Response, error) {
+// Add this new function before handleMultiAgentConversation
+func makeAgentRequest(agent agents.AgentConfig, message string) (*http.Response, error) {
     // Initialize history with just the system message for this conversation
     history := []Message{{
         Role:    "system",
-        Content: assistant.GetFullSystemMessage(),
+        Content: agent.GetFullSystemMessage(),
     }}
 
     // Add the current message
@@ -1104,7 +1053,7 @@ func makeAssistantRequest(assistant assistants.AssistantConfig, message string) 
 
     // Prepare the request
     chatReq := ChatRequest{
-        Model:    assistants.GetCurrentModel(),
+        Model:    agents.GetCurrentModel(),
         Messages: history,
         Stream:   true,
     }
@@ -1145,36 +1094,36 @@ func main() {
         fmt.Println("\n💡 This will:")
         fmt.Println("   • Create your personal chat directory (~/.chatty)")
         fmt.Println("   • Set up default configurations")
-        fmt.Println("   • Install sample AI assistants")
+        fmt.Println("   • Install sample AI agents")
         fmt.Println("   • Prepare everything for your first chat")
         os.Exit(1)
     }
 
-    // Now that we know chatty is initialized, load assistants
-    if err := assistants.LoadAssistants(); err != nil {
-        fmt.Printf("Error loading assistants: %v\n", err)
+    // Now that we know chatty is initialized, load agents
+    if err := agents.LoadAgents(); err != nil {
+        fmt.Printf("Error loading agents: %v\n", err)
         os.Exit(1)
     }
 
     // Load configuration at startup
-    config, err := assistants.GetCurrentConfig()
+    config, err := agents.GetCurrentConfig()
     if err != nil {
         fmt.Printf("Error loading config: %v\n", err)
-        // Continue with default assistant
+        // Continue with default agent
     } else {
-        // Set current assistant from config
-        currentAssistant = assistants.GetAssistantConfig(config.CurrentAssistant)
+        // Set current agent from config
+        currentAgent = agents.GetAgentConfig(config.CurrentAgent)
     }
 
     if len(os.Args) < 2 {
         fmt.Println("Usage: chatty \"Your message here\"")
         fmt.Println("Special commands:")
         fmt.Println("  init                          Initialize Chatty environment")
-        fmt.Println("  --clear [all|assistant_name]  Clear chat history (all or specific assistant)")
-        fmt.Println("  --list                       List available assistants")
-        fmt.Println("  --select <assistant_name>    Select an assistant")
-        fmt.Println("  --current                    Show current assistant")
-        fmt.Println("  --converse <assistants...>   Start a conversation between assistants")
+        fmt.Println("  --clear [all|agent_name]  Clear chat history (all or specific agent)")
+        fmt.Println("  --list                       List available agents")
+        fmt.Println("  --select <agent_name>    Select an agent")
+        fmt.Println("  --current                    Show current agent")
+        fmt.Println("  --converse <agents...>   Start a conversation between agents")
         fmt.Println("      --starter \"message\"      Initial message to start the conversation")
         fmt.Println("      --turns N                Number of conversation turns (default: infinite)")
         return
@@ -1184,7 +1133,7 @@ func main() {
     switch os.Args[1] {
     case "--converse":
         if len(os.Args) < 4 {
-            fmt.Println("Usage: chatty --converse <assistant1> <assistant2> [assistant3...] --starter \"message\" [--turns N]")
+            fmt.Println("Usage: chatty --converse <agent1> <agent2> [agent3...] --starter \"message\" [--turns N]")
             fmt.Println("\nNote: The --starter argument must be enclosed in double quotes to preserve special characters.")
             return
         }
@@ -1239,24 +1188,24 @@ func main() {
             }
         }
 
-        // Collect assistant names (all arguments between --converse and --starter)
+        // Collect agent names (all arguments between --converse and --starter)
         for i := 2; i < len(os.Args); i++ {
             if os.Args[i] == "--starter" {
                 break
             }
-            config.Assistants = append(config.Assistants, os.Args[i])
+            config.Agents = append(config.Agents, os.Args[i])
         }
 
         config.Starter = starter
         config.Turns = turns
 
-        if err := handleMultiAssistantConversation(config); err != nil {
+        if err := handleMultiAgentConversation(config); err != nil {
             fmt.Printf("Error: %v\n", err)
             return
         }
         return
     case "--current":
-        fmt.Printf("Current assistant: %s - %s\n", currentAssistant.Name, currentAssistant.Description)
+        fmt.Printf("Current agent: %s - %s\n", currentAgent.Name, currentAgent.Description)
         return
     case "--clear":
         target := "all"
@@ -1269,33 +1218,33 @@ func main() {
         }
         return
     case "--list":
-        fmt.Print(assistants.ListAssistants())
+        fmt.Print(agents.ListAgents())
         return
     case "--select":
         if len(os.Args) < 3 {
-            fmt.Println("Please specify an assistant name")
+            fmt.Println("Please specify an agent name")
             return
         }
         
-        // Validate assistant name before making any changes
-        if !assistants.IsValidAssistant(os.Args[2]) {
-            fmt.Printf("Error: Invalid assistant name '%s'\n", os.Args[2])
-            fmt.Println("\nAvailable assistants:")
-            fmt.Print(assistants.ListAssistants())
+        // Validate agent name before making any changes
+        if !agents.IsValidAgent(os.Args[2]) {
+            fmt.Printf("Error: Invalid agent name '%s'\n", os.Args[2])
+            fmt.Println("\nAvailable agents:")
+            fmt.Print(agents.ListAgents())
             return
         }
         
-        currentAssistant = assistants.GetAssistantConfig(os.Args[2])
-        if err := assistants.UpdateCurrentAssistant(os.Args[2]); err != nil {
-            fmt.Printf("Error saving assistant selection: %v\n", err)
+        currentAgent = agents.GetAgentConfig(os.Args[2])
+        if err := agents.UpdateCurrentAgent(os.Args[2]); err != nil {
+            fmt.Printf("Error saving agent selection: %v\n", err)
             return
         }
         fmt.Printf("Switched to %s [%s%s%s] %s\n", 
-            currentAssistant.Emoji,
-            currentAssistant.LabelColor,
-            currentAssistant.Name,
+            currentAgent.Emoji,
+            currentAgent.LabelColor,
+            currentAgent.Name,
             "\u001b[0m", // Reset color
-            currentAssistant.Description)
+            currentAgent.Description)
         return
     }
 
@@ -1316,7 +1265,7 @@ func main() {
 
     // Prepare the request
     chatReq := ChatRequest{
-        Model:    assistants.GetCurrentModel(),
+        Model:    agents.GetCurrentModel(),
         Messages: history,
         Stream:   true,
     }
@@ -1330,8 +1279,8 @@ func main() {
     // Print top margin
     printChatMargin(chatTopMargin)
 
-    // Show assistant label immediately
-    fmt.Printf("%s", colorize(getAssistantLabel(), currentAssistant.LabelColor))
+    // Show agent label immediately
+    fmt.Printf("%s", colorize(getAgentLabel(), currentAgent.LabelColor))
 
     // Start the animation before making the request
     anim := startAnimation()
@@ -1362,9 +1311,9 @@ func main() {
     // Print bottom margin
     printChatMargin(chatBottomMargin)
 
-    // Add assistant's response to history
+    // Add agent's response to history
     history = append(history, Message{
-        Role:    "assistant",
+        Role:    "agent",
         Content: fullResponseText,
     })
 

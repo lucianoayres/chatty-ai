@@ -4,14 +4,10 @@ Transform your terminal into an AI-powered workspace with Chatty - your command-
 
 ### 🎯 Perfect for:
 
-- **Developers**: Get instant code reviews, debugging help, and architecture advice from AI experts
-- **System Administrators**: Receive step-by-step guidance for complex terminal operations
-- **Students**: Learn programming concepts with interactive explanations
-- **Writers**: Brainstorm ideas and get feedback on your content
-- **Problem Solvers**: Discuss solutions with multiple AI personalities for diverse perspectives
-- **History Enthusiasts**: Create dialogues between historical figures about modern topics
-- **Entertainment Seekers**: Stage fun conversations between fictional characters
-- **Philosophers**: Explore deep discussions with different schools of thought
+- **Development & Tech**: Code reviews, debugging, system administration, and learning programming
+- **Creative Work**: Writing, brainstorming, and content creation
+- **Learning & Discussion**: Interactive learning sessions and multi-perspective problem solving
+- **Entertainment**: Creating fun dialogues between AI personalities, historical figures, or fictional characters
 
 ### 💡 Example Use Cases:
 
@@ -32,6 +28,8 @@ chatty --converse rocket focus --starter "Teach me about design patterns" --turn
 ```
 
 #### 🎭 Historical & Philosophical Discussions
+
+> **Note**: These examples assume you've created custom agents for each character (see [Creating Custom Agents](#%EF%B8%8F-creating-custom-agents)). They're meant to inspire you with possible conversation scenarios!
 
 ```bash
 # Create a debate about modern technology
@@ -69,7 +67,7 @@ chatty --converse gordon_ramsay shakespeare --starter "Create a recipe for moder
 ## ✨ Features
 
 - 🎭 Customizable AI personalities
-- 💬 Multi-assistant conversations (up to 15 assistants)
+- 💬 Multi-agent conversations (up to 15 agents)
 - 📝 Persistent chat history
 - 🔄 Real-time streaming responses
 - 🌍 Multi-language support
@@ -102,7 +100,7 @@ This will:
 
 - Create your ~/.chatty directory
 - Set up default configuration
-- Install sample AI assistants
+- Install sample AI agents
 - Prepare everything for your first chat
 
 ### Basic Usage
@@ -111,27 +109,27 @@ This will:
 # Start chatting (use quotes for messages)
 chatty "Hello, how can you help me today?"
 
-# Show current assistant
+# Show current agent
 chatty --current
 
-# List available assistants
+# List available agents
 chatty --list
 
-# Switch assistants
+# Switch agents
 chatty --select rocket           # Use Rocket (default)
 chatty --select "Data Scientist" # Use Data Scientist
 
 # Clear chat history
 chatty --clear all              # Clear all histories
-chatty --clear rocket           # Clear specific assistant's history
+chatty --clear rocket           # Clear specific agent's history
 ```
 
-## 🤝 Multi-Assistant Conversations
+## 🤝 Multi-Agent Conversations
 
-Create interactive discussions between AI assistants:
+Create interactive discussions between AI agents:
 
 ```bash
-# Basic conversation (2-15 assistants)
+# Basic conversation (2-15 agents)
 chatty --converse rocket tux --starter "Let's discuss Linux development"
 
 # Three-way conversation
@@ -147,7 +145,7 @@ chatty --converse rocket tux --starter "How to build a startup with \$100?"
 ### How Conversations Work
 
 1. First turn starts with your starter message
-2. Each assistant responds in sequence (no duplicates allowed)
+2. Each agent responds in sequence (no duplicates allowed)
 3. After each turn, you're prompted for a new message
 4. Your message starts the next turn
 5. Conversation ends when:
@@ -173,7 +171,7 @@ The display includes:
 - Start time in your local timezone
 - Elapsed time in human-readable format
 
-## 🎨 Built-in Assistants
+## 🎨 Built-in Agents
 
 Chatty comes with pre-configured AI personalities:
 
@@ -187,7 +185,7 @@ Settings are stored in `~/.chatty/config.json`:
 
 ```json
 {
-  "current_assistant": "rocket",
+  "current_agent": "rocket",
   "language_code": "en-US",
   "model": "llama3.2",
   "common_directives": "Be professional and formal..."
@@ -196,56 +194,58 @@ Settings are stored in `~/.chatty/config.json`:
 
 ### Available Settings
 
-- `current_assistant`: Active AI personality (defaults to "rocket")
+- `current_agent`: Active AI personality (defaults to "rocket")
 - `language_code`: Language for interactions (default: "en-US")
 - `model`: Ollama model to use (default: "llama3.2")
-- `common_directives`: Custom personality traits for all assistants
+- `common_directives`: Custom personality traits for all agents
 
 ### Language Support
 
-Supported languages:
+Chatty supports any language that your Ollama model can understand. Use the following format in your config.json:
 
-- English (en-US)
-- Spanish (es-ES)
-- French (fr-FR)
-- German (de-DE)
-- Italian (it-IT)
-- Portuguese (pt-BR)
-- Japanese (ja-JP)
-- Korean (ko-KR)
-- Chinese (zh-CN)
+Example language codes:
+
+- English: `en-US`
+- Spanish: `es-ES`
+- French: `fr-FR`
+- German: `de-DE`
+- Italian: `it-IT`
+- Portuguese: `pt-BR`
+- Japanese: `ja-JP`
+- Korean: `ko-KR`
+- Chinese: `zh-CN`
 
 To change language:
 
-1. Edit `language_code` in config.json
+1. Edit `language_code` in config.json using the appropriate language code format (xx-XX)
 2. Clear history: `chatty --clear all`
 
 **Note**: Clear history after changing language to ensure consistent responses.
 
-## 🛠️ Creating Custom Assistants
+## 🛠️ Creating Custom Agents
 
 1. Check sample configurations:
 
    ```bash
-   ls ~/.chatty/assistants/*.sample
+   ls ~/.chatty/agents/*.sample
    ```
 
-2. Create your assistant:
+2. Create your agent:
 
    ```bash
-   cp ~/.chatty/assistants/focus.yaml.sample ~/.chatty/assistants/myassistant.yaml
+   cp ~/.chatty/agents/focus.yaml.sample ~/.chatty/agents/myagent.yaml
    ```
 
 3. Edit the configuration:
    ```yaml
-   name: "Assistant Name"
+   name: "Agent Name"
    system_message: |
      You are [description]...
    emoji: "🤖"
    label_color: "\u001b[38;5;75m" # Blue
    text_color: "\u001b[38;5;252m" # Light gray
    description: "Brief description"
-   is_default: false # Optional: set as default assistant
+   is_default: false # Optional: set as default agent
    ```
 
 ### File Naming Conventions
@@ -282,15 +282,15 @@ Common colors:
    - Update model in `~/.chatty/config.json`
    - Default model is "llama3.2"
 
-3. **"Too many assistants"**
+3. **"Too many agents"**
 
-   - Maximum 15 assistants per conversation
-   - Error: "too many assistants: maximum allowed is 15, but got X"
+   - Maximum 15 agents per conversation
+   - Error: "too many agents: maximum allowed is 15, but got X"
 
-4. **"Duplicate assistant"**
+4. **"Duplicate agent"**
 
-   - Each assistant can only be included once
-   - Error: "duplicate assistant detected: X (each assistant can only be included once)"
+   - Each agent can only be included once
+   - Error: "duplicate agent detected: X (each agent can only be included once)"
 
 5. **"Connection timed out"**
 
@@ -365,7 +365,7 @@ chatty/
 ├── cmd/
 │   └── chatty/
 │       ├── main.go            # Main application
-│       └── assistants/        # Assistant configurations
+│       └── agents/        # Agent configurations
 ├── bin/                       # Build output
 └── README.md                  # Documentation
 ```
