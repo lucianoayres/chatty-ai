@@ -8,9 +8,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"chatty/cmd/chatty/agents"
@@ -39,6 +41,7 @@ type ConversationConfig struct {
     Starter    string
     Turns      int  // 0 means infinite
     Current    int  // Current turn
+    AutoMode   bool // If true, agents converse among themselves without user input
 }
 
 // Add this new type for conversation history
@@ -84,8 +87,8 @@ const (
     // Animation configuration
     frameDelay   = 200          // Milliseconds between animation frames
 
-    // Conversation context template
-    conversationContextTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
+    // Conversation context templates
+    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
 
     Current participants (excluding yourself):
     %s
@@ -106,6 +109,29 @@ const (
     Their message: "%s"
 
     Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
+
+    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
+
+    Current participants (excluding yourself):
+    %s
+
+    Important guidelines:
+    1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
+    2. Address other agents by name when responding to them
+    3. Keep responses concise and conversational
+    4. Stay in character according to your role and expertise
+    5. Build upon previous messages and maintain conversation flow
+    6. DO NOT address or refer to the user - this is an autonomous discussion
+    7. Drive the conversation forward with questions and insights for other agents
+    8. Acknowledge what other agents have said before adding your perspective
+
+    Conversation history:
+    %s
+
+    Previous message was from: %s
+    Their message: "%s"
+
+    Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
 
     // Maximum number of previous messages to include in conversation context
     maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
@@ -454,6 +480,11 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
     var lastErr error
     retryDelay := initialRetryDelay
 
+    // Create a channel for interrupt signals
+    stopChan := make(chan os.Signal, 1)
+    signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+    defer signal.Stop(stopChan)
+
     for attempt := 1; attempt <= maxRetries; attempt++ {
         // Show retry attempt if not first try
         if attempt > 1 {
@@ -463,6 +494,11 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
         resp, err := makeAPIRequest(jsonData, history, isConversation)
         if err == nil {
             return resp, nil
+        }
+
+        // If we were interrupted, stop retrying
+        if err.Error() == "interrupted" {
+            return nil, err
         }
 
         lastErr = err
@@ -479,7 +515,14 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
 
             fmt.Printf("Request failed: %v\nWaiting %.0f seconds before retry...\n", 
                 err, retryDelay.Seconds())
-            time.Sleep(retryDelay)
+
+            // Wait for either the delay to complete or an interrupt
+            select {
+            case <-time.After(retryDelay):
+                continue
+            case <-stopChan:
+                return nil, fmt.Errorf("interrupted")
+            }
         }
     }
 
@@ -488,6 +531,15 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
 
 // Update makeAPIRequest function
 func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*http.Response, error) {
+    // Create a channel for interrupt signals
+    stopChan := make(chan os.Signal, 1)
+    signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+    defer signal.Stop(stopChan)
+
+    // Create a channel for the request result
+    respChan := make(chan *http.Response)
+    errChan := make(chan error)
+
     // Create the request
     req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
     if err != nil {
@@ -526,38 +578,58 @@ func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*h
         Timeout:   currentRequestTimeout,
     }
 
-    // Make the request
-    resp, err := client.Do(req)
-    if err != nil {
-        if os.IsTimeout(err) {
-            return nil, fmt.Errorf("connection timed out after %.0f seconds - the model might be busy", currentRequestTimeout.Seconds())
-        }
-        if strings.Contains(err.Error(), "connection refused") {
-            return nil, fmt.Errorf("could not connect to Ollama server - make sure 'ollama serve' is running")
-        }
-        return nil, fmt.Errorf("error connecting to Ollama: %v", err)
-    }
-
-    // Check for error responses
-    if resp.StatusCode != http.StatusOK {
-        defer resp.Body.Close()
-        
-        // Try to read error details
-        var errorResponse struct {
-            Error string `json:"error"`
-        }
-        body, _ := io.ReadAll(resp.Body)
-        if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
-            if strings.Contains(errorResponse.Error, "model") {
-                return nil, fmt.Errorf("invalid model '%s' - please check your config.json file", agents.GetCurrentModel())
+    // Make the request in a goroutine
+    go func() {
+        resp, err := client.Do(req)
+        if err != nil {
+            if os.IsTimeout(err) {
+                errChan <- fmt.Errorf("connection timed out after %.0f seconds - the model might be busy", currentRequestTimeout.Seconds())
+                return
             }
-            return nil, fmt.Errorf("API error: %s", errorResponse.Error)
+            if strings.Contains(err.Error(), "connection refused") {
+                errChan <- fmt.Errorf("could not connect to Ollama server - make sure 'ollama serve' is running")
+                return
+            }
+            errChan <- fmt.Errorf("error connecting to Ollama: %v", err)
+            return
         }
-        
-        return nil, fmt.Errorf("API error (status %d): failed to process request", resp.StatusCode)
-    }
 
-    return resp, nil
+        // Check for error responses
+        if resp.StatusCode != http.StatusOK {
+            defer resp.Body.Close()
+            
+            // Try to read error details
+            var errorResponse struct {
+                Error string `json:"error"`
+            }
+            body, _ := io.ReadAll(resp.Body)
+            if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
+                if strings.Contains(errorResponse.Error, "model") {
+                    errChan <- fmt.Errorf("invalid model '%s' - please check your config.json file", agents.GetCurrentModel())
+                    return
+                }
+                errChan <- fmt.Errorf("API error: %s", errorResponse.Error)
+                return
+            }
+            
+            errChan <- fmt.Errorf("API error (status %d): failed to process request", resp.StatusCode)
+            return
+        }
+
+        respChan <- resp
+    }()
+
+    // Wait for either the response or an interrupt
+    select {
+    case resp := <-respChan:
+        return resp, nil
+    case err := <-errChan:
+        return nil, err
+    case <-stopChan:
+        // Cancel any ongoing request
+        transport.CloseIdleConnections()
+        return nil, fmt.Errorf("interrupted")
+    }
 }
 
 // Add this helper function to get recent conversation history
@@ -685,7 +757,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 
     currentMessage := config.Starter
     currentTurn := 1
-    lastSpeaker := "User"
     firstMessage := true
 
     // Initialize conversation histories
@@ -702,8 +773,11 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         }}
     }
 
-    // Create a reader for user input
-    reader := bufio.NewReader(os.Stdin)
+    // Create a reader for user input (only used in non-auto mode)
+    var reader *bufio.Reader
+    if !config.AutoMode {
+        reader = bufio.NewReader(os.Stdin)
+    }
 
     // Initialize conversation state
     state := ConversationState{
@@ -711,9 +785,29 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         lastActive: time.Now(),
     }
 
+    // Create a channel for graceful shutdown in auto mode
+    stopChan := make(chan os.Signal, 1)
+    if config.AutoMode {
+        signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+        fmt.Println("\n🤖 Auto-conversation mode enabled. Press Ctrl+C to stop.")
+        // Ensure we clean up the signal handler when we're done
+        defer signal.Stop(stopChan)
+    }
+
     for {
         // Update last active time
         state.lastActive = time.Now()
+
+        // Check for stop signal before starting a new turn
+        if config.AutoMode {
+            select {
+            case <-stopChan:
+                fmt.Printf("\n\nConversation ended after %s\n",
+                    formatElapsedTime(state.startTime, time.Now()))
+                return nil
+            default:
+            }
+        }
 
         // Print turn header with improved structure
         elapsed := formatElapsedTime(state.startTime, state.lastActive)
@@ -738,7 +832,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             gmtOffset = fmt.Sprintf("GMT%d", offset/3600)
         }
         
-        // Fix the formatting strings to match the number of arguments
         fmt.Printf("%s%sStarted:%s %s%s %s\n",
             timeHeaderColor,
             timeHeaderColor, colorReset,
@@ -752,21 +845,42 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             timeValueColor, elapsed,
             colorReset)
             
-        // Print bottom separator and add extra line break
-        fmt.Printf("%s%s%s\n\n", turnSeparatorColor, strings.Repeat("─", 60), colorReset)
+        // Print bottom separator and add exactly one line break
+        fmt.Printf("%s%s%s\n", turnSeparatorColor, strings.Repeat("─", 60), colorReset)
 
-        // Print the user's message at the start of each turn (after the turn title)
+        // Print the user's message at the start of each turn
         if firstMessage {
+            // Add single blank line before user message
+            fmt.Println()
             fmt.Println(colorize(formatUserMessage(config.Starter), "\033[1;36m"))
             firstMessage = false
-        } else {
+            // Add blank line after first message in both auto and normal modes
+            fmt.Println()
+        } else if !config.AutoMode {
+            // Only show user messages in non-auto mode after first turn
             fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
+        } else {
+            // In auto mode after first turn, add blank line before first agent response
+            fmt.Println()
         }
 
         for i, agent := range agentConfigs {
-            // Print margins
-            for i := 0; i < converseMargin; i++ {
-                fmt.Println()
+            // Check for stop signal before each agent's response
+            if config.AutoMode {
+                select {
+                case <-stopChan:
+                    fmt.Printf("\n\nConversation ended after %s\n",
+                        formatElapsedTime(state.startTime, time.Now()))
+                    return nil
+                default:
+                }
+            }
+
+            // In auto mode, only add margin between agent responses
+            if i > 0 {
+                for i := 0; i < converseMargin; i++ {
+                    fmt.Println()
+                }
             }
             
             // Start animation with correct agent
@@ -783,20 +897,27 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                         other.Description))
                 }
             }
-            participants.WriteString(fmt.Sprintf("%d. User (👤) - Human participant guiding the conversation\n", 
-                len(agentConfigs)))
+            if !config.AutoMode {
+                participants.WriteString(fmt.Sprintf("%d. User (👤) - Human participant guiding the conversation\n", 
+                    len(agentConfigs)))
+            }
 
             // Get recent conversation history
             recentHistory := getRecentConversationHistory(conversationLog.String())
 
             // Create conversation context with identity reinforcement
-            context := fmt.Sprintf(conversationContextTemplate,
+            var templateToUse string
+            if config.AutoMode {
+                templateToUse = autoConversationTemplate
+            } else {
+                templateToUse = normalConversationTemplate
+            }
+            context := fmt.Sprintf(templateToUse,
                 agent.Name,
                 agent.Emoji,
                 agent.Name,
                 participants.String(),
-                recentHistory,  // Use recent history instead of full history
-                lastSpeaker,
+                recentHistory,
                 currentMessage,
                 agent.Name)
 
@@ -835,6 +956,16 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             // Process the response
             fullResponseText, err := processStreamResponse(resp, anim, true)
             if err != nil {
+                // Check if this was due to a stop signal
+                if config.AutoMode {
+                    select {
+                    case <-stopChan:
+                        fmt.Printf("\n\nConversation ended after %s\n",
+                            formatElapsedTime(state.startTime, time.Now()))
+                        return nil
+                    default:
+                    }
+                }
                 return fmt.Errorf("error processing response from %s: %v", agent.Name, err)
             }
 
@@ -852,7 +983,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 
             // Update for next iteration
             currentMessage = fullResponseText
-            lastSpeaker = agent.Name
 
             // Print margins
             for i := 0; i < converseMargin; i++ {
@@ -861,13 +991,23 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 
             // If this is the last agent in the turn
             if i == len(agentConfigs)-1 {
+                // Add extra blank line before next turn separator
+                fmt.Println()
+                
                 // Check if we should continue
                 if config.Turns > 0 && currentTurn >= config.Turns {
                     fmt.Printf("\nConversation completed after %d turns.\n", config.Turns)
                     return nil
                 }
 
-                // Print margins and input prompt
+                if config.AutoMode {
+                    // Add a small delay between turns in auto mode
+                    time.Sleep(2 * time.Second)
+                    currentTurn++
+                    continue
+                }
+
+                // Print margins and input prompt for non-auto mode
                 fmt.Println()  // Single blank line before input prompt
                 fmt.Printf("%sType your message:%s\n", inputPromptColor, colorReset)
                 fmt.Printf("%s[Press Enter with empty message to end the conversation]%s\n", inputHintColor, colorReset)
@@ -891,7 +1031,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 // Update conversation log with user's message
                 conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", currentMessage))
 
-                lastSpeaker = "User"
                 currentTurn++
             }
         }
@@ -919,6 +1058,13 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
     chunkTimer := time.NewTimer(currentReadTimeout)
     defer chunkTimer.Stop()
 
+    // Create a channel to check for interrupts
+    stopChan := make(chan os.Signal, 1)
+    if isConversation {
+        signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+        defer signal.Stop(stopChan)
+    }
+
     for {
         // Reset timer for next chunk
         chunkTimer.Reset(currentReadTimeout)
@@ -932,7 +1078,7 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
             done <- decoder.Decode(&streamResp)
         }()
 
-        // Wait for either timeout or successful decode
+        // Wait for either timeout, successful decode, or interrupt
         select {
         case err := <-done:
             if err == io.EOF {
@@ -943,6 +1089,10 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
             }
         case <-chunkTimer.C:
             return fullResponse.String(), fmt.Errorf("timeout waiting for model response")
+        case <-stopChan:
+            // If we get interrupted, close the response body and return what we have
+            resp.Body.Close()
+            return fullResponse.String(), fmt.Errorf("interrupted")
         }
         
         // Process the chunk
@@ -992,7 +1142,7 @@ func isChattyInitialized() bool {
 
 // Initialize chatty environment
 func initializeChatty() error {
-    fmt.Println("Initializing Chatty environment...")
+    fmt.Println("\n🚀 Initializing Chatty environment...")
     
     // Create necessary directories and files
     homeDir, err := os.UserHomeDir()
@@ -1005,34 +1155,68 @@ func initializeChatty() error {
     if err := os.MkdirAll(chattyDir, 0755); err != nil {
         return fmt.Errorf("failed to create chatty directory: %v", err)
     }
-    fmt.Println("✓ Created ~/.chatty directory")
+    fmt.Printf("%s✓%s Created %s~/.chatty%s directory\n", 
+        "\033[32m", colorReset,  // Green checkmark
+        "\033[1;34m", colorReset) // Blue path
 
     // Initialize agents
     if err := agents.CreateDefaultConfig(); err != nil {
         return fmt.Errorf("failed to create default config: %v", err)
     }
-    fmt.Println("✓ Created default configuration")
+    fmt.Printf("%s✓%s Created default configuration\n", 
+        "\033[32m", colorReset)
 
     // Create agents directory
     agentsDir := filepath.Join(chattyDir, "agents")
     if err := os.MkdirAll(agentsDir, 0755); err != nil {
         return fmt.Errorf("failed to create agents directory: %v", err)
     }
-    fmt.Println("✓ Created agents directory")
+    fmt.Printf("%s✓%s Created agents directory\n", 
+        "\033[32m", colorReset)
 
     // Copy sample agents
     if err := agents.CopySampleAgents(); err != nil {
         fmt.Printf("Warning: Failed to copy sample agents: %v\n", err)
     } else {
-        fmt.Println("✓ Copied sample agent configurations")
+        fmt.Printf("%s✓%s Copied sample agent configurations\n", 
+            "\033[32m", colorReset)
     }
 
-    fmt.Println("\nChatty has been successfully initialized!")
-    fmt.Println("\nYou can now:")
-    fmt.Println("1. List available agents:   chatty --list")
-    fmt.Println("2. Select an agent:         chatty --select <name>")
-    fmt.Println("3. Start chatting:              chatty \"Your message here\"")
-    fmt.Println("\nEnjoy your conversations! 🚀")
+    // Get default agent info
+    defaultAgent := agents.DefaultAgent
+
+    // Print success message with enhanced formatting
+    fmt.Printf("\n%s🎉 Chatty has been successfully initialized!%s\n\n", 
+        "\033[1;32m", colorReset)
+
+    fmt.Printf("%s📌 Default Agent:%s\n", "\033[1;36m", colorReset)
+    fmt.Printf("   %s %s%s%s - %s\n\n",
+        defaultAgent.Emoji,
+        defaultAgent.LabelColor,
+        defaultAgent.Name,
+        colorReset,
+        defaultAgent.Description)
+
+    fmt.Printf("%s🎯 Quick Start Guide:%s\n", "\033[1;35m", colorReset)
+    fmt.Printf("   1. %sStart chatting:%s chatty \"Hello, how can you help me?\"\n",
+        "\033[1;33m", colorReset)
+    fmt.Printf("   2. %sList agents:%s chatty --list\n",
+        "\033[1;33m", colorReset)
+    fmt.Printf("   3. %sSwitch agents:%s chatty --select <name>\n",
+        "\033[1;33m", colorReset)
+    fmt.Printf("   4. %sStart a group chat:%s chatty --converse rocket tux --starter \"Let's talk\"\n",
+        "\033[1;33m", colorReset)
+
+    fmt.Printf("\n%s💡 Pro Tips:%s\n", "\033[1;36m", colorReset)
+    fmt.Printf("   • Use %s--auto%s flag in group chats for autonomous agent discussions\n",
+        "\033[1;33m", colorReset)
+    fmt.Printf("   • Press %sCtrl+C%s to stop auto-conversations gracefully\n",
+        "\033[1;33m", colorReset)
+    fmt.Printf("   • Use %s--turns N%s to limit conversation length\n",
+        "\033[1;33m", colorReset)
+
+    fmt.Printf("\n%s🌟 Ready to start your AI journey!%s\n\n",
+        "\033[1;32m", colorReset)
     
     return nil
 }
@@ -1133,8 +1317,11 @@ func main() {
     switch os.Args[1] {
     case "--converse":
         if len(os.Args) < 4 {
-            fmt.Println("Usage: chatty --converse <agent1> <agent2> [agent3...] --starter \"message\" [--turns N]")
-            fmt.Println("\nNote: The --starter argument must be enclosed in double quotes to preserve special characters.")
+            fmt.Println("Usage: chatty --converse agent1,agent2[,agent3...] --starter \"message\" [--turns N] [--auto]")
+            fmt.Println("\nOptions:")
+            fmt.Println("  --starter \"message\"  Initial message to start the conversation (required)")
+            fmt.Println("  --turns N           Number of conversation turns (default: infinite)")
+            fmt.Println("  --auto              Enable autonomous conversation mode (agents talk among themselves)")
             return
         }
 
@@ -1142,13 +1329,23 @@ func main() {
         var config ConversationConfig
         var starter string
         var turns int
-        var starterIndex int
         var foundStarterArg bool
+        var autoMode bool
 
-        // Find the --starter argument
-        for i := 2; i < len(os.Args); i++ {
-            if os.Args[i] == "--starter" {
-                starterIndex = i
+        // Parse the comma-separated agent names
+        agentList := strings.Split(os.Args[2], ",")
+        config.Agents = make([]string, 0, len(agentList))
+        for _, agent := range agentList {
+            trimmedAgent := strings.TrimSpace(agent)
+            if trimmedAgent != "" {
+                config.Agents = append(config.Agents, trimmedAgent)
+            }
+        }
+
+        // Find the --starter argument and check for --auto
+        for i := 3; i < len(os.Args); i++ {
+            switch os.Args[i] {
+            case "--starter":
                 foundStarterArg = true
                 // Check if next argument exists
                 if i+1 >= len(os.Args) {
@@ -1156,9 +1353,20 @@ func main() {
                     fmt.Println("\nUsage: --starter \"your message here\"")
                     return
                 }
-                // Take the next argument as is, without checking for quotes
+                // Take the next argument as is
                 starter = os.Args[i+1]
-                break
+                i++ // Skip the next argument since we've used it
+            case "--auto":
+                autoMode = true
+            case "--turns":
+                if i+1 < len(os.Args) {
+                    turns, err = strconv.Atoi(os.Args[i+1])
+                    if err != nil {
+                        fmt.Printf("Error: invalid turns value: %v\n", err)
+                        return
+                    }
+                    i++ // Skip the next argument since we've used it
+                }
             }
         }
 
@@ -1174,30 +1382,15 @@ func main() {
             return
         }
 
-        // Find the --turns argument
-        for i := starterIndex + 1; i < len(os.Args); i++ {
-            if os.Args[i] == "--turns" {
-                if i+1 < len(os.Args) {
-                    turns, err = strconv.Atoi(os.Args[i+1])
-                    if err != nil {
-                        fmt.Printf("Error: invalid turns value: %v\n", err)
-                        return
-                    }
-                    break
-                }
-            }
-        }
-
-        // Collect agent names (all arguments between --converse and --starter)
-        for i := 2; i < len(os.Args); i++ {
-            if os.Args[i] == "--starter" {
-                break
-            }
-            config.Agents = append(config.Agents, os.Args[i])
+        if len(config.Agents) < 2 {
+            fmt.Println("Error: at least two agents must be specified, separated by commas")
+            fmt.Println("\nExample: chatty --converse plato,aristotle,socrates --starter \"Let's discuss philosophy\"")
+            return
         }
 
         config.Starter = starter
         config.Turns = turns
+        config.AutoMode = autoMode
 
         if err := handleMultiAgentConversation(config); err != nil {
             fmt.Printf("Error: %v\n", err)

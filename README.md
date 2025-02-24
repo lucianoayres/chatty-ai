@@ -25,6 +25,9 @@ chatty --converse rocket tux --starter "How can we optimize this Python script f
 
 # Interactive learning sessions
 chatty --converse rocket focus --starter "Teach me about design patterns" --turns 5
+
+# Autonomous expert discussion (agents talk among themselves)
+chatty --converse rocket tux focus --starter "Discuss modern development practices" --auto
 ```
 
 #### 🎭 Historical & Philosophical Discussions
@@ -35,8 +38,8 @@ chatty --converse rocket focus --starter "Teach me about design patterns" --turn
 # Create a debate about modern technology
 chatty --converse socrates plato --starter "How would social media impact society?"
 
-# Discuss climate change with historical figures
-chatty --converse tesla einstein darwin --starter "How would you address global warming?"
+# Autonomous discussion about climate change
+chatty --converse tesla einstein darwin --starter "How would you address global warming?" --auto --turns 10
 
 # Explore economic theories
 chatty --converse adam_smith keynes marx --starter "Analyze cryptocurrency's impact on modern economics"
@@ -138,6 +141,12 @@ chatty --converse rocket tux focus --starter "How can we improve code quality?"
 # Limited turns (stop after N turns)
 chatty --converse rocket tux --starter "Discuss AI trends" --turns 3
 
+# Autonomous conversation (agents talk among themselves)
+chatty --converse rocket tux focus --starter "Debate software architecture" --auto
+
+# Auto conversation with turn limit
+chatty --converse rocket tux --starter "Explore cloud computing" --auto --turns 5
+
 # Using special characters (escape with \)
 chatty --converse rocket tux --starter "How to build a startup with \$100?"
 ```
@@ -146,12 +155,14 @@ chatty --converse rocket tux --starter "How to build a startup with \$100?"
 
 1. First turn starts with your starter message
 2. Each agent responds in sequence (no duplicates allowed)
-3. After each turn, you're prompted for a new message
-4. Your message starts the next turn
-5. Conversation ends when:
+3. After each turn:
+   - In normal mode: you're prompted for a new message
+   - In auto mode (--auto): agents continue the conversation automatically
+4. Conversation ends when:
    - Specified number of turns is reached (if --turns used)
    - You press Ctrl+C
-   - You enter an empty message
+   - In normal mode: you enter an empty message
+   - In auto mode: you press Ctrl+C to stop
 
 ### Conversation Display
 
