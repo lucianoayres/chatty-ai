@@ -22,7 +22,7 @@ const (
 	defaultModel = "llama3.2"
 
 	// Default agent name
-	defaultAgentName = "ghost"
+	defaultAgentName = "byte"
 
 	// Default common directives template - for natural conversations
 	defaultCommonDirectivesTemplate = `Always follow the specified language instruction above. Chat like a human friend - be brief, casual, and engaging. Provide accurate information and acknowledge uncertainty. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
@@ -609,7 +609,7 @@ func init() {
 
 	// Set default agent if none was specified
 	if DefaultAgent.Name == "" && len(cache.agents) > 0 {
-		// Try to use Ghost as default if available
+		// Try to use the default agent if available
 		if agent, ok := cache.agents[defaultAgentName]; ok {
 			DefaultAgent = agent
 		} else {

@@ -1,155 +1,177 @@
 # Chatty 🤖
 
-Transform your terminal into an AI-powered workspace with Chatty - your command-line companion for seamless interactions with Ollama's LLMs. Whether you're coding, learning, exploring ideas, or just having fun, Chatty brings the power of AI to your fingertips with real-time responses and intelligent conversations.
+Transform your terminal into a vibrant AI-powered workspace where historical figures, scientists, philosophers, and experts come alive! Chatty isn't just another CLI tool - it's your gateway to engaging conversations with some of history's most fascinating minds.
 
-### 🎯 Perfect for:
+## ✨ What Makes Chatty Special?
 
-- **Development & Tech**: Code reviews, debugging, system administration, and learning programming
-- **Creative Work**: Writing, brainstorming, and content creation
-- **Learning & Discussion**: Interactive learning sessions and multi-perspective problem solving
-- **Entertainment**: Creating fun dialogues between AI personalities, historical figures, or fictional characters
+- 🎭 **Rich Character Roster**: From Shakespeare to Einstein, Plato to Marie Curie - engage with personalities who shaped history
+- 🗣️ **Multi-Agent Conversations**: Create unique discussions between up to 15 different characters
+- 🤖 **Autonomous Mode**: Watch as historical figures and experts discuss topics on their own
+- 🌈 **Beautiful Terminal UI**: Real-time streaming responses with custom colors and animations
+- 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
+- 📝 **Persistent Memory**: Each agent remembers your conversations
 
-### 💡 Example Use Cases:
+## 🎭 Available Agents
 
-#### 🔧 Professional Use
+### 💻 Built-in Agents
 
-```bash
-# Get code review and improvements
-chatty "Review this function: function calculateTotal(items) { ... }"
+These come pre-installed and ready to use:
 
-# Learn about complex concepts
-chatty "Explain Docker networking in simple terms"
+- **Ada** 💻 - Software development expert with algorithmic mastery
+- **Aristotle** 🏛️ - Ancient Greek philosopher and polymath
+- **Byte** 🤖 - Default agent for general assistance
+- **Cleopatra** 👑 - Last active ruler of the Ptolemaic Kingdom of Egypt
+- **Curie** ⚛️ - Pioneering physicist and chemist
+- **Einstein** 🧮 - Revolutionary physicist who redefined our understanding of the universe
+- **Nimble** 🎯 - Task-focused productivity assistant
+- **Tesla** ⚡ - Visionary inventor and electrical engineer
+- **Tux** 🐧 - Linux and command-line specialist
+- **Twain** ✍️ - American humorist and social critic
 
-# Multi-expert problem solving
-chatty --converse rocket tux --starter "How can we optimize this Python script for Linux systems?"
+### 🎭 Sample Personality Agents
 
-# Interactive learning sessions
-chatty --converse rocket focus --starter "Teach me about design patterns" --turns 5
-
-# Autonomous expert discussion (agents talk among themselves)
-chatty --converse rocket tux focus --starter "Discuss modern development practices" --auto
-```
-
-#### 🎭 Historical & Philosophical Discussions
-
-> **Note**: These examples assume you've created custom agents for each character (see [Creating Custom Agents](#%EF%B8%8F-creating-custom-agents)). They're meant to inspire you with possible conversation scenarios!
+Chatty comes with over 50 fascinating personalities available as templates in `~/.chatty/agents/*.sample`. Below are some examples from each category. To use any of them, you'll need to create your own copies:
 
 ```bash
-# Create a debate about modern technology
-chatty --converse socrates plato --starter "How would social media impact society?"
+# List available samples
+ls ~/.chatty/agents/*.sample
 
-# Autonomous discussion about climate change
-chatty --converse tesla einstein darwin --starter "How would you address global warming?" --auto --turns 10
-
-# Explore economic theories
-chatty --converse adam_smith keynes marx --starter "Analyze cryptocurrency's impact on modern economics"
-
-# Debate ethics in AI
-chatty --converse kant aristotle confucius --starter "What are the moral implications of artificial intelligence?"
+# Create your own agent from a sample
+cp ~/.chatty/agents/einstein.yaml.sample ~/.chatty/agents/einstein.yaml
 ```
 
-#### 🎬 Entertainment & Fun
+#### 🔬 Scientific Minds (Examples)
 
-```bash
-# Movie character mashups
-chatty --converse sherlock yoda batman --starter "Solve the mystery of the missing cookies"
+- **Richard Feynman**: Physics explained with clarity and enthusiasm
+- **Marie Curie**: Methodical approach to discovery
+- **Carl Sagan**: Bringing cosmic wonder to your terminal
 
-# Absurd historical meetings
-chatty --converse shakespeare elvis beethoven --starter "Create a modern pop song"
+#### 📚 Literary Giants (Examples)
 
-# Fictional problem solving
-chatty --converse gandalf ironman doctorwho --starter "How to deal with a dragon in Manhattan?"
+- **William Shakespeare**: Poetic mastery and character insight
+- **Jane Austen**: Sharp social observation and wit
+- **Edgar Allan Poe**: Master of mystery and psychological depth
 
-# Time-traveling discussions
-chatty --converse leonardo_da_vinci steve_jobs --starter "Design the next iPhone"
+#### 🏛️ Philosophers & Thinkers (Examples)
 
-# Unlikely cooking show
-chatty --converse gordon_ramsay shakespeare --starter "Create a recipe for modern fast food"
-```
+- **Plato**: Ancient wisdom for modern questions
+- **Nietzsche**: Challenging conventional thinking
+- **Simone de Beauvoir**: Feminist philosophy and existentialism
 
-## ✨ Features
+#### 💻 Technical Experts (Examples)
 
-- 🎭 Customizable AI personalities
-- 💬 Multi-agent conversations (up to 15 agents)
-- 📝 Persistent chat history
-- 🔄 Real-time streaming responses
-- 🌍 Multi-language support
-- 🚀 Easy to use and configure
+- **Software Architect**: System design wisdom
+- **Security Expert**: Cybersecurity insights
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-1. Install [Ollama](https://ollama.ai)
-2. Start the Ollama server:
-   ```bash
-   ollama serve
-   ```
-3. Install Chatty:
-   ```bash
-   git clone <your-repo-url>
-   cd chatty
-   go build -o bin/chatty cmd/chatty/main.go
-   ```
-
-### First Run Setup
-
 ```bash
-# Initialize Chatty (required on first run)
+# Install Ollama first (https://ollama.ai)
+ollama serve
+
+# Initialize Chatty
 chatty init
+
+# Start a simple chat
+chatty "Tell me about quantum physics"
+
+# Create a fascinating discussion
+chatty --converse "Richard Feynman","Carl Sagan","Albert Einstein" --starter "Explain quantum entanglement to a child" --auto
+
+# Host a literary salon
+chatty --converse "William Shakespeare","Jane Austen","Edgar Allan Poe" --starter "How would you approach writing in the digital age?"
 ```
 
-This will:
+## 🎯 Cool Use Cases
 
-- Create your ~/.chatty directory
-- Set up default configuration
-- Install sample AI agents
-- Prepare everything for your first chat
-
-### Basic Usage
+### 🔮 Time-Traveling Discussions
 
 ```bash
-# Start chatting (use quotes for messages)
-chatty "Hello, how can you help me today?"
+# First, set up your desired personality agents
+cp ~/.chatty/agents/newton.yaml.sample ~/.chatty/agents/newton.yaml
+cp ~/.chatty/agents/tesla.yaml.sample ~/.chatty/agents/tesla.yaml
+cp ~/.chatty/agents/turing.yaml.sample ~/.chatty/agents/turing.yaml
 
-# Show current agent
+# Then start your discussion
+chatty --converse "Isaac Newton","Nikola Tesla","Alan Turing" --starter "What would you think of modern AI?"
+```
+
+### 🎓 Learning & Exploration
+
+```bash
+# Using built-in agents
+chatty --converse "Ada","Nimble" --starter "How to organize a complex software project?"
+
+# Using personality agents (after setting them up)
+chatty --converse "Richard Feynman","Marie Curie","Charles Darwin" --starter "Explain how scientific discovery happens"
+```
+
+### 🎭 Entertainment & Creativity
+
+```bash
+# Unlikely Collaborations
+chatty --converse "William Shakespeare","Mark Twain","Jane Austen" --starter "Write a story about time travel"
+
+# Cultural Conversations
+chatty --converse "Wolfgang Amadeus Mozart","Louis Armstrong","Elvis Presley" --starter "Create a new musical genre"
+
+# Philosophical Debates
+chatty --converse "Socrates","Immanuel Kant","Albert Camus" --starter "Is social media making us happier?"
+```
+
+## 💭 Chat Modes
+
+### 👤 Single Agent Conversations
+
+Have a one-on-one chat with any agent:
+
+```bash
+# Chat with the default agent (Byte)
+chatty "Help me understand Docker containers"
+
+# Switch to a different agent
+chatty --select "Richard Feynman"
+chatty "Can you explain quantum mechanics to me?"
+
+# Quick examples with different agents
+chatty --select "William Shakespeare" "What makes a great story?"
+chatty --select "Marie Curie" "Tell me about your research"
+chatty --select "Plato" "What is justice?"
+
+# See who you're talking to
 chatty --current
 
-# List available agents
+# List all available agents (shows exact names to use with --select)
 chatty --list
-
-# Switch agents
-chatty --select rocket           # Use Rocket (default)
-chatty --select "Data Scientist" # Use Data Scientist
-
-# Clear chat history
-chatty --clear all              # Clear all histories
-chatty --clear rocket           # Clear specific agent's history
 ```
 
-## 🤝 Multi-Agent Conversations
+**Note**: When using `--select`, the agent name must exactly match the `name` field in the agent's YAML file. For example, if the YAML contains `name: "Marie Curie"`, you must use `--select "Marie Curie"` (including quotes if the name contains spaces).
+
+### 🤝 Multi-Agent Conversations
 
 Create interactive discussions between AI agents:
 
 ```bash
 # Basic conversation (2-15 agents)
-chatty --converse rocket tux --starter "Let's discuss Linux development"
+chatty --converse "Ada","Tux" --starter "Let's discuss Linux development"
 
 # Three-way conversation
-chatty --converse rocket tux focus --starter "How can we improve code quality?"
+chatty --converse "Ada","Tux","Nimble" --starter "How can we improve code quality?"
 
 # Limited turns (stop after N turns)
-chatty --converse rocket tux --starter "Discuss AI trends" --turns 3
+chatty --converse "Ada","Tux" --starter "Discuss AI trends" --turns 3
 
 # Autonomous conversation (agents talk among themselves)
-chatty --converse rocket tux focus --starter "Debate software architecture" --auto
+chatty --converse "Ada","Tux","Nimble" --starter "Debate software architecture" --auto
 
 # Auto conversation with turn limit
-chatty --converse rocket tux --starter "Explore cloud computing" --auto --turns 5
+chatty --converse "Ada","Tux" --starter "Explore cloud computing" --auto --turns 5
 
 # Using special characters (escape with \)
-chatty --converse rocket tux --starter "How to build a startup with \$100?"
+chatty --converse "Ada","Tux" --starter "How to build a startup with \$100?"
 ```
+
+**Note**: Agent names in the `--converse` argument must be comma-separated and match exactly with their YAML file names. Use quotes for names containing spaces.
 
 ### How Conversations Work
 
@@ -182,21 +204,13 @@ The display includes:
 - Start time in your local timezone
 - Elapsed time in human-readable format
 
-## 🎨 Built-in Agents
-
-Chatty comes with pre-configured AI personalities:
-
-- **Rocket** 🚀 - Your friendly coding companion for development guidance
-- **Tux** 🐧 - Your Linux terminal expert for command-line operations
-- **Focus** 🎯 - Your efficiency expert for productivity and organization
-
 ## ⚙️ Configuration
 
 Settings are stored in `~/.chatty/config.json`:
 
 ```json
 {
-  "current_agent": "rocket",
+  "current_agent": "byte",
   "language_code": "en-US",
   "model": "llama3.2",
   "common_directives": "Be professional and formal..."
@@ -205,7 +219,7 @@ Settings are stored in `~/.chatty/config.json`:
 
 ### Available Settings
 
-- `current_agent`: Active AI personality (defaults to "rocket")
+- `current_agent`: Active AI personality (defaults to "byte")
 - `language_code`: Language for interactions (default: "en-US")
 - `model`: Ollama model to use (default: "llama3.2")
 - `common_directives`: Custom personality traits for all agents
@@ -235,19 +249,17 @@ To change language:
 
 ## 🛠️ Creating Custom Agents
 
-1. Check sample configurations:
+1. Start with a sample:
 
    ```bash
+   # List available samples
    ls ~/.chatty/agents/*.sample
-   ```
 
-2. Create your agent:
-
-   ```bash
+   # Create from a sample
    cp ~/.chatty/agents/focus.yaml.sample ~/.chatty/agents/myagent.yaml
    ```
 
-3. Edit the configuration:
+2. Or create from scratch:
    ```yaml
    name: "Agent Name"
    system_message: |
@@ -256,7 +268,7 @@ To change language:
    label_color: "\u001b[38;5;75m" # Blue
    text_color: "\u001b[38;5;252m" # Light gray
    description: "Brief description"
-   is_default: false # Optional: set as default agent
+   is_default: false
    ```
 
 ### File Naming Conventions
@@ -330,63 +342,13 @@ Common colors:
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how you can help:
+Found a bug? Have a cool idea? We'd love your help!
 
-1. **Report Issues**: Found a bug or have a suggestion? Open an issue!
-2. **Submit PRs**: Code improvements are always welcome
-3. **Share Ideas**: Join discussions in the issues section
-4. **Spread the Word**: Star the repo if you find it useful
+- Open an issue to report bugs or suggest features
+- Submit pull requests to improve the code
+- Star the repo if you find it useful
 
 ## 📄 License
 
-MIT License
-
+MIT License - Feel free to use, modify, and share!
 Copyright (c) 2024 [Your Name/Organization]
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-## 👩‍💻 Development
-
-### Prerequisites
-
-- Go 1.16 or later
-- Ollama installed and running
-- Required model installed in Ollama
-
-### Project Structure
-
-```
-chatty/
-├── cmd/
-│   └── chatty/
-│       ├── main.go            # Main application
-│       └── agents/        # Agent configurations
-├── bin/                       # Build output
-└── README.md                  # Documentation
-```
-
-### Build Commands
-
-```bash
-# Build for current platform
-go build -o bin/chatty cmd/chatty/main.go
-
-# Run tests
-go test ./...
-```
