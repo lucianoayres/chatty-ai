@@ -555,8 +555,30 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
     return nil, fmt.Errorf("after %d attempts: %v", maxRetries, lastErr)
 }
 
-// Update the makeAPIRequest function
+// Add debug flag at the top with other vars
+var debugMode bool
+
+// Update makeAPIRequest function
 func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*http.Response, error) {
+    // Print request JSON in debug mode
+    if debugMode {
+        // Pretty print the JSON with indentation
+        var prettyJSON bytes.Buffer
+        if err := json.Indent(&prettyJSON, jsonData, "", "    "); err != nil {
+            fmt.Printf("Error formatting JSON: %v\n", err)
+            return nil, err
+        }
+        
+        // Print with colors and formatting
+        fmt.Printf("\n%sDebug: Request JSON:%s\n", 
+            "\033[38;5;208m", // Orange color for debug
+            colorReset)
+        fmt.Printf("%s%s%s\n\n",
+            "\033[38;5;39m", // Light blue for JSON
+            prettyJSON.String(),
+            colorReset)
+    }
+
     // Create the request
     req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
     if err != nil {
@@ -915,6 +937,15 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                     }
                 }
             }
+            
+            // Get the previous message source
+            var prevMessageSource string
+            if firstMessage {
+                prevMessageSource = "User"
+            } else {
+                prevMessageSource = currentMessage
+            }
+
             context := fmt.Sprintf(templateToUse,
                 agent.Name,
                 agent.Emoji,
@@ -922,6 +953,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 participants.String(),
                 guidelines,
                 recentHistory,
+                prevMessageSource,
                 currentMessage,
                 agent.Name)
 
@@ -1061,6 +1093,22 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
         }
         if err != nil {
             return fullResponse.String(), fmt.Errorf("error reading response: %v", err)
+        }
+
+        // In debug mode, show the response chunk
+        if debugMode {
+            // Pretty print the response JSON
+            prettyJSON, err := json.MarshalIndent(streamResp, "", "    ")
+            if err != nil {
+                fmt.Printf("Error formatting debug JSON: %v\n", err)
+            } else {
+                fmt.Printf("\n%sDebug: Stream Response:%s\n%s%s%s",
+                    "\033[38;5;208m", // Orange for debug header
+                    colorReset,
+                    "\033[38;5;39m", // Light blue for JSON
+                    string(prettyJSON),
+                    colorReset)
+            }
         }
 
         // Handle first chunk animation
@@ -1220,6 +1268,16 @@ func makeAgentRequest(agent agents.AgentConfig, message string) (*http.Response,
 
 // Update the main() function to handle the new command
 func main() {
+    // Add debug flag check at the start
+    for i, arg := range os.Args {
+        if arg == "--debug" {
+            debugMode = true
+            // Remove debug flag from args
+            os.Args = append(os.Args[:i], os.Args[i+1:]...)
+            break
+        }
+    }
+
     // Check if this is the init command
     if len(os.Args) > 1 && os.Args[1] == "init" {
         if isChattyInitialized() {
@@ -1277,6 +1335,7 @@ func main() {
         fmt.Println("  --converse <agents...>   Start a conversation between agents")
         fmt.Println("      --starter \"message\"      Initial message to start the conversation")
         fmt.Println("      --turns N                Number of conversation turns (default: infinite)")
+        fmt.Println("  --debug                      Show debug information including request JSON")
         return
     }
 
