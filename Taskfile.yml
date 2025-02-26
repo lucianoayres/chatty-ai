@@ -58,4 +58,4 @@ tasks:
       - task build
       - task install
       - chatty init
-      - chatty --converse tux,ada,einstein --starter "Answer only with 3 words during the whole conversation" --auto --debug
+      - chatty --converse tux,ada,einstein --starter "Lets talk about flying elephants" --auto --debug
