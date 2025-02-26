@@ -1,4 +1,4 @@
-# Chatty 🤖
+# Chatty AI Agents 🤖
 
 Transform your terminal into a vibrant AI-powered workspace where historical figures, scientists, philosophers, and experts come alive! Chatty isn't just another CLI tool - it's your gateway to engaging conversations with some of history's most fascinating minds.
 
@@ -11,76 +11,63 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 - 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
 - 📝 **Persistent Memory**: Each agent remembers your conversations
 
-## 🎭 Available Agents
-
-### 💻 Built-in Agents
-
-These come pre-installed and ready to use:
-
-- **Ada** 💻 - Software development expert with algorithmic mastery
-- **Aristotle** 🏛️ - Ancient Greek philosopher and polymath
-- **Byte** 🤖 - Default agent for general assistance
-- **Cleopatra** 👑 - Last active ruler of the Ptolemaic Kingdom of Egypt
-- **Curie** ⚛️ - Pioneering physicist and chemist
-- **Einstein** 🧮 - Revolutionary physicist who redefined our understanding of the universe
-- **Nimble** 🎯 - Task-focused productivity assistant
-- **Tesla** ⚡ - Visionary inventor and electrical engineer
-- **Tux** 🐧 - Linux and command-line specialist
-- **Twain** ✍️ - American humorist and social critic
-
-### 🎭 Sample Personality Agents
-
-Chatty comes with over 50 fascinating personalities available as templates in `~/.chatty/agents/*.sample`. Below are some examples from each category. To use any of them, you'll need to create your own copies:
-
-```bash
-# List available samples
-ls ~/.chatty/agents/*.sample
-
-# Create your own agent from a sample
-cp ~/.chatty/agents/einstein.yaml.sample ~/.chatty/agents/einstein.yaml
-```
-
-#### 🔬 Scientific Minds (Examples)
-
-- **Richard Feynman**: Physics explained with clarity and enthusiasm
-- **Marie Curie**: Methodical approach to discovery
-- **Carl Sagan**: Bringing cosmic wonder to your terminal
-
-#### 📚 Literary Giants (Examples)
-
-- **William Shakespeare**: Poetic mastery and character insight
-- **Jane Austen**: Sharp social observation and wit
-- **Edgar Allan Poe**: Master of mystery and psychological depth
-
-#### 🏛️ Philosophers & Thinkers (Examples)
-
-- **Plato**: Ancient wisdom for modern questions
-- **Nietzsche**: Challenging conventional thinking
-- **Simone de Beauvoir**: Feminist philosophy and existentialism
-
-#### 💻 Technical Experts (Examples)
-
-- **Software Architect**: System design wisdom
-- **Security Expert**: Cybersecurity insights
-
 ## 🚀 Quick Start
 
 ```bash
 # Install Ollama first (https://ollama.ai)
 ollama serve
 
-# Initialize Chatty
+# First-time setup (required)
 chatty init
 
-# Start a simple chat
-chatty "Tell me about quantum physics"
+# Start a simple chat with the default agent
+chatty "What can you do?"
 
-# Create a fascinating discussion
-chatty --converse "Richard Feynman","Carl Sagan","Albert Einstein" --starter "Explain quantum entanglement to a child" --auto
+# Switch to a different agent
+chatty --select "Einstein"
 
-# Host a literary salon
-chatty --converse "William Shakespeare","Jane Austen","Edgar Allan Poe" --starter "How would you approach writing in the digital age?"
+# Then engage in impossible conversations
+chatty "Can you explain the quantum mechanics behind TikTok viral videos, or is it just pure sorcery?"
+
+# Play games with your historical figures
+chatty --converse "Shakespeare,Jane Austen,Gandalf" --starter "Let's play Two Truths and a Lie!"
+
+# Create the movie plot of your dreams
+chatty --converse "Cleopatra,Asimov,Beethoven" --starter "Encene a movie called Cybor Hamsters: Escape from the Moon" --auto
+
+# Unlearn everything you know about any topic
+chatty --converse Zeus,Turing,Tux --starter "Explain how the cloud works, wrong answers only" --auto
+
+# Plan spectacular events
+chatty --converse Shakespeare,Aristotle,Dracula --starter "Let's plan the ultimate vampire-themed dinner party"
+
+# Brainstorm revolutionary business ideas
+chatty --converse Marx,Tesla,"Sherlock Holmes" --starter "Pitch a revolutionary business idea that combines electricity, detective work, and communism"
 ```
+
+## Available Agents
+
+### 💻 Built-in Agents
+
+Step into a world of extraordinary conversations with our diverse roster of pre-installed agents! Chat with brilliant minds like **Einstein** about the mysteries of the universe, explore the art of code with **Ada**, or debate philosophy with **Aristotle** and **Plato**. Need technical help? **Tux** and **Nimble** are ready to assist with Linux and productivity. Want something different? Share stories with **Shakespeare**, investigate mysteries with **Sherlock Holmes**, or discuss revolution with **Marx**.
+
+Each agent brings their unique perspective and expertise to the conversation. Use `chatty --list` to see all available agents and their specialties.
+
+### 🎭 Sample Personality Agents
+
+Want even more fascinating conversations? Discover our collection of over 50 additional personalities ready to be brought to life! Explore the cosmos with **Carl Sagan**, unravel the mysteries of consciousness with **Sigmund Freud**, or dive into the depths of gothic literature with **Edgar Allan Poe**. Challenge your perspectives with **Nietzsche**'s philosophical provocations, or get cybersecurity insights from our **Security Expert**.
+
+To start using these personalities:
+
+```bash
+# List all available samples
+ls ~/.chatty/agents/*.sample
+
+# Pick your favorite and create your own copy
+cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
+```
+
+The possibilities are endless - mix and match personalities to create unique conversations that span across time, disciplines, and perspectives!
 
 ## 🎯 Cool Use Cases
 
@@ -88,12 +75,12 @@ chatty --converse "William Shakespeare","Jane Austen","Edgar Allan Poe" --starte
 
 ```bash
 # First, set up your desired personality agents
-cp ~/.chatty/agents/newton.yaml.sample ~/.chatty/agents/newton.yaml
-cp ~/.chatty/agents/tesla.yaml.sample ~/.chatty/agents/tesla.yaml
-cp ~/.chatty/agents/turing.yaml.sample ~/.chatty/agents/turing.yaml
+cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
+cp ~/.chatty/agents/hawking.yaml.sample ~/.chatty/agents/hawking.yaml
+cp ~/.chatty/agents/captain_nemo.yaml.sample ~/.chatty/agents/captain_nemo.yaml
 
 # Then start your discussion
-chatty --converse "Isaac Newton","Nikola Tesla","Alan Turing" --starter "What would you think of modern AI?"
+chatty --converse "Carl Sagan","Stephen Hawking","Captain Nemo" --starter "Let's explore the mysteries of space and sea - which frontier is more fascinating?"
 ```
 
 ### 🎓 Learning & Exploration
@@ -103,20 +90,20 @@ chatty --converse "Isaac Newton","Nikola Tesla","Alan Turing" --starter "What wo
 chatty --converse "Ada","Nimble" --starter "How to organize a complex software project?"
 
 # Using personality agents (after setting them up)
-chatty --converse "Richard Feynman","Marie Curie","Charles Darwin" --starter "Explain how scientific discovery happens"
+chatty --converse "Feynman","Marie Curie","Darwin" --starter "Explain how scientific discovery happens"
 ```
 
 ### 🎭 Entertainment & Creativity
 
 ```bash
 # Unlikely Collaborations
-chatty --converse "William Shakespeare","Mark Twain","Jane Austen" --starter "Write a story about time travel"
+chatty --converse "Shakespeare","Mark Twain","Jane Austen" --starter "Write a story about time travel"
 
 # Cultural Conversations
-chatty --converse "Wolfgang Amadeus Mozart","Louis Armstrong","Elvis Presley" --starter "Create a new musical genre"
+chatty --converse "Mozart","Louis Armstrong","Elvis Presley" --starter "Create a new musical genre"
 
 # Philosophical Debates
-chatty --converse "Socrates","Immanuel Kant","Albert Camus" --starter "Is social media making us happier?"
+chatty --converse "Socrates","Kant","Albert Camus" --starter "Is social media making us happier?"
 ```
 
 ## 💭 Chat Modes
@@ -126,23 +113,20 @@ chatty --converse "Socrates","Immanuel Kant","Albert Camus" --starter "Is social
 Have a one-on-one chat with any agent:
 
 ```bash
-# Chat with the default agent (Byte)
-chatty "Help me understand Docker containers"
+# List available agents and their specialties
+chatty --list
 
-# Switch to a different agent
-chatty --select "Richard Feynman"
-chatty "Can you explain quantum mechanics to me?"
+# Choose your conversation partner
+chatty --select "Sherlock Holmes"
 
-# Quick examples with different agents
-chatty --select "William Shakespeare" "What makes a great story?"
-chatty --select "Marie Curie" "Tell me about your research"
-chatty --select "Plato" "What is justice?"
+# Get creative with your questions
+chatty "Analyze my coffee stains and deduce my morning routine"
 
-# See who you're talking to
+# Check who you're currently talking to
 chatty --current
 
-# List all available agents (shows exact names to use with --select)
-chatty --list
+# Clear chat history for a fresh start
+chatty --clear "Shakespeare"
 ```
 
 **Note**: When using `--select`, the agent name must exactly match the `name` field in the agent's YAML file. For example, if the YAML contains `name: "Marie Curie"`, you must use `--select "Marie Curie"` (including quotes if the name contains spaces).
@@ -152,26 +136,35 @@ chatty --list
 Create interactive discussions between AI agents:
 
 ```bash
-# Basic conversation (2-15 agents)
-chatty --converse "Ada","Tux" --starter "Let's discuss Linux development"
+# Basic examples - single-word names don't need quotes
+chatty --converse Ada,Tux --starter "Let's discuss Linux development"
+chatty --converse Einstein,Newton,Darwin --starter "Let's discuss gravity"
 
-# Three-way conversation
-chatty --converse "Ada","Tux","Nimble" --starter "How can we improve code quality?"
+# When an agent has multiple words in their name, use quotes
+chatty --converse "Marie Curie",Einstein,Darwin --starter "Discuss scientific method"
+chatty --converse "Edgar Allan Poe","Mark Twain",Shakespeare --starter "Write a story"
 
-# Limited turns (stop after N turns)
-chatty --converse "Ada","Tux" --starter "Discuss AI trends" --turns 3
+# You can also use quotes for all names (recommended for consistency)
+chatty --converse "Einstein","Newton","Darwin" --starter "How would you explain gravity?"
 
-# Autonomous conversation (agents talk among themselves)
-chatty --converse "Ada","Tux","Nimble" --starter "Debate software architecture" --auto
-
-# Auto conversation with turn limit
-chatty --converse "Ada","Tux" --starter "Explore cloud computing" --auto --turns 5
+# More examples
+chatty --converse Ada,Tux,Nimble --starter "How can we improve code quality?"
+chatty --converse "Marie Curie","Ada Lovelace",Einstein --starter "Women in science"
+chatty --converse Mozart,"Louis Armstrong","Elvis Presley" --starter "Future of music"
 
 # Using special characters (escape with \)
-chatty --converse "Ada","Tux" --starter "How to build a startup with \$100?"
+chatty --converse Ada,Tux --starter "How to make \$100 last a month?"
+
+# Auto mode and turn limits work the same way
+chatty --converse Einstein,Newton --starter "Discuss gravity" --auto
+chatty --converse "Marie Curie",Einstein --starter "Future of physics" --turns 5
 ```
 
-**Note**: Agent names in the `--converse` argument must be comma-separated and match exactly with their YAML file names. Use quotes for names containing spaces.
+**Note**: When using `--converse`, you can either:
+
+- Skip quotes for single-word names: `Ada,Tux,Einstein`
+- Use quotes only for multi-word names: `"Marie Curie",Einstein,Newton`
+- Use quotes for all names (recommended): `"Einstein","Newton","Darwin"`
 
 ### How Conversations Work
 

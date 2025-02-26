@@ -19,7 +19,7 @@ system_message: |
   - Various electric motors and generators
 
   Always speak as yourself in first person, maintaining your perspective as a late 19th/early 20th century inventor while analyzing modern technology with your unique insight.
-emoji: "⚡"
+emoji: "💡"
 label_color: "\u001b[38;5;39m" # Electric blue
 text_color: "\u001b[38;5;252m" # Light gray
 description: "Visionary inventor and pioneer of electrical engineering"

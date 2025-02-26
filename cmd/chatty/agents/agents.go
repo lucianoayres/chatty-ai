@@ -431,7 +431,7 @@ func ListAgents() string {
 	}
 
 	// Add hint for custom agents
-	sb.WriteString(fmt.Sprintf("\n\u001b[38;5;240mHINT: Add custom agents in ~/.chatty/agents\u001b[0m\n"))
+	sb.WriteString("\n\u001b[38;5;240mTIP: You can add and customize agents in ~/.chatty/agents\u001b[0m\n")
 
 	return sb.String()
 }

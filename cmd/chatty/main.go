@@ -475,8 +475,27 @@ func (a *ConversationAnimation) stopAnimation() {
     fmt.Printf("\r%s", colorize(label, a.agent.LabelColor))
 }
 
-// Update makeAPIRequestWithRetry function
+// Add this new function at the top level
+func checkOllamaReady() error {
+    client := &http.Client{Timeout: 5 * time.Second}
+    resp, err := client.Get(ollamaBaseURL + "/api/tags")
+    if err != nil {
+        if os.IsTimeout(err) || strings.Contains(err.Error(), "connection refused") {
+            return fmt.Errorf("Ollama is not ready. Please ensure 'ollama serve' is running and the service is fully initialized")
+        }
+        return fmt.Errorf("Error checking Ollama: %v", err)
+    }
+    defer resp.Body.Close()
+    return nil
+}
+
+// Update the makeAPIRequestWithRetry function
 func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, isConversation bool) (*http.Response, error) {
+    // First, check if Ollama is ready
+    if err := checkOllamaReady(); err != nil {
+        return nil, err
+    }
+
     var lastErr error
     retryDelay := initialRetryDelay
 
@@ -529,107 +548,61 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
     return nil, fmt.Errorf("after %d attempts: %v", maxRetries, lastErr)
 }
 
-// Update makeAPIRequest function
+// Update the makeAPIRequest function
 func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*http.Response, error) {
-    // Create a channel for interrupt signals
-    stopChan := make(chan os.Signal, 1)
-    signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
-    defer signal.Stop(stopChan)
-
-    // Create a channel for the request result
-    respChan := make(chan *http.Response)
-    errChan := make(chan error)
-
     // Create the request
     req, err := http.NewRequest("POST", getOllamaAPI(), bytes.NewBuffer(jsonData))
     if err != nil {
         return nil, fmt.Errorf("error creating request: %v", err)
     }
     req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("Connection", "keep-alive")
-    req.Header.Set("Keep-Alive", "timeout=86400")  // 24 hours in seconds
-
-    // Use appropriate timeouts based on mode
-    currentRequestTimeout := requestTimeout
-    currentWriteTimeout := writeTimeout
-    if isConversation {
-        currentRequestTimeout = converseRequestTimeout
-        currentWriteTimeout = converseWriteTimeout
-    }
 
     // Create a custom transport with optimized settings for streaming
     transport := &http.Transport{
         MaxIdleConns:        maxIdleConns,
         MaxConnsPerHost:     maxConnsPerHost,
-        IdleConnTimeout:     keepAliveTimeout,
         DisableCompression:  false,
         DisableKeepAlives:   false,
         ForceAttemptHTTP2:   true,
         MaxIdleConnsPerHost: maxConnsPerHost,
-        ResponseHeaderTimeout: currentWriteTimeout,
-        ExpectContinueTimeout: 1 * time.Second,
         WriteBufferSize:     64 * 1024,
         ReadBufferSize:      64 * 1024,
     }
 
-    // Create client with initial connection timeout only
+    // Create client with no timeout
     client := &http.Client{
         Transport: transport,
-        Timeout:   currentRequestTimeout,
     }
 
-    // Make the request in a goroutine
-    go func() {
-        resp, err := client.Do(req)
-        if err != nil {
-            if os.IsTimeout(err) {
-                errChan <- fmt.Errorf("connection timed out after %.0f seconds - the model might be busy", currentRequestTimeout.Seconds())
-                return
-            }
-            if strings.Contains(err.Error(), "connection refused") {
-                errChan <- fmt.Errorf("could not connect to Ollama server - make sure 'ollama serve' is running")
-                return
-            }
-            errChan <- fmt.Errorf("error connecting to Ollama: %v", err)
-            return
+    // Make the request
+    resp, err := client.Do(req)
+    if err != nil {
+        if strings.Contains(err.Error(), "connection refused") {
+            return nil, fmt.Errorf("could not connect to Ollama - make sure 'ollama serve' is running")
         }
-
-        // Check for error responses
-        if resp.StatusCode != http.StatusOK {
-            defer resp.Body.Close()
-            
-            // Try to read error details
-            var errorResponse struct {
-                Error string `json:"error"`
-            }
-            body, _ := io.ReadAll(resp.Body)
-            if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
-                if strings.Contains(errorResponse.Error, "model") {
-                    errChan <- fmt.Errorf("invalid model '%s' - please check your config.json file", agents.GetCurrentModel())
-                    return
-                }
-                errChan <- fmt.Errorf("API error: %s", errorResponse.Error)
-                return
-            }
-            
-            errChan <- fmt.Errorf("API error (status %d): failed to process request", resp.StatusCode)
-            return
-        }
-
-        respChan <- resp
-    }()
-
-    // Wait for either the response or an interrupt
-    select {
-    case resp := <-respChan:
-        return resp, nil
-    case err := <-errChan:
-        return nil, err
-    case <-stopChan:
-        // Cancel any ongoing request
-        transport.CloseIdleConnections()
-        return nil, fmt.Errorf("interrupted")
+        return nil, fmt.Errorf("error connecting to Ollama: %v", err)
     }
+
+    // Check for error responses
+    if resp.StatusCode != http.StatusOK {
+        defer resp.Body.Close()
+        
+        // Try to read error details
+        var errorResponse struct {
+            Error string `json:"error"`
+        }
+        body, _ := io.ReadAll(resp.Body)
+        if err := json.Unmarshal(body, &errorResponse); err == nil && errorResponse.Error != "" {
+            if strings.Contains(errorResponse.Error, "model") {
+                return nil, fmt.Errorf("invalid model '%s' - please check your config.json file", agents.GetCurrentModel())
+            }
+            return nil, fmt.Errorf("API error: %s", errorResponse.Error)
+        }
+        
+        return nil, fmt.Errorf("API error (status %d): failed to process request", resp.StatusCode)
+    }
+
+    return resp, nil
 }
 
 // Add this helper function to get recent conversation history
@@ -1047,57 +1020,20 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
     
     // Create a decoder that reads from our buffered reader
     decoder := json.NewDecoder(reader)
-    
-    // Use appropriate timeout based on mode
-    currentReadTimeout := readTimeout
-    if isConversation {
-        currentReadTimeout = converseReadTimeout
-    }
-
-    // Create a timer for chunk timeout
-    chunkTimer := time.NewTimer(currentReadTimeout)
-    defer chunkTimer.Stop()
-
-    // Create a channel to check for interrupts
-    stopChan := make(chan os.Signal, 1)
-    if isConversation {
-        signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
-        defer signal.Stop(stopChan)
-    }
 
     for {
-        // Reset timer for next chunk
-        chunkTimer.Reset(currentReadTimeout)
-
-        // Create a channel for the decoding operation
-        done := make(chan error, 1)
         var streamResp ChatResponse
-
-        // Start decoding in a goroutine
-        go func() {
-            done <- decoder.Decode(&streamResp)
-        }()
-
-        // Wait for either timeout, successful decode, or interrupt
-        select {
-        case err := <-done:
-            if err == io.EOF {
-                return fullResponse.String(), nil
-            }
-            if err != nil {
-                return fullResponse.String(), fmt.Errorf("error reading response: %v", err)
-            }
-        case <-chunkTimer.C:
-            return fullResponse.String(), fmt.Errorf("timeout waiting for model response")
-        case <-stopChan:
-            // If we get interrupted, close the response body and return what we have
-            resp.Body.Close()
-            return fullResponse.String(), fmt.Errorf("interrupted")
-        }
+        err := decoder.Decode(&streamResp)
         
-        // Process the chunk
+        if err == io.EOF {
+            return fullResponse.String(), nil
+        }
+        if err != nil {
+            return fullResponse.String(), fmt.Errorf("error reading response: %v", err)
+        }
+
+        // Handle first chunk animation
         if firstChunk {
-            // Handle both animation types
             switch a := anim.(type) {
             case *Animation:
                 a.stopAnimation()
