@@ -88,42 +88,13 @@ const (
     frameDelay   = 200          // Milliseconds between animation frames
 
     // Conversation context templates
-    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
-
-    Current participants (excluding yourself):
-    %s
-
-    Important guidelines:
-    %s
-
-    Conversation history:
-    %s
-
-    Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
+    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s Important guidelines: %s Conversation history: %s Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
 
     // Add this new constant for auto conversation guidelines
-    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
-2. Address other agents by name when responding to them
-3. Keep responses concise and conversational
-4. Stay in character according to your role and expertise
-5. Build upon previous messages and maintain conversation flow
-6. DO NOT address or refer to the user - this is an autonomous discussion
-7. Drive the conversation forward with questions and insights for other agents
-8. Acknowledge what other agents have said before adding your perspective`
+    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 2. Address other agents by name when responding to them 3. Keep responses concise and conversational 4. Stay in character according to your role and expertise 5. Build upon previous messages and maintain conversation flow 6. DO NOT address or refer to the user - this is an autonomous discussion 7. Drive the conversation forward with questions and insights for other agents 8. Acknowledge what other agents have said before adding your perspective`
 
     // Update the autoConversationTemplate to use the guidelines
-    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
-
-    Current participants (excluding yourself):
-    %s
-
-    Important guidelines:
-    %s
-
-    Conversation history:
-    %s
-
-    Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
+    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s Important guidelines: %s Conversation history: %s Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
 
     // Maximum number of previous messages to include in conversation context
     maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
@@ -152,13 +123,7 @@ const (
     converseWriteTimeout = 300 * time.Second    // Timeout for writing requests in converse mode
 
     // Add this new constant for normal conversation guidelines
-    defaultInteractiveGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
-2. Address others by name when responding to them
-3. Keep responses concise and conversational
-4. Stay in character according to your role and expertise
-5. Build upon previous messages and maintain conversation flow
-6. Feel free to ask questions to other participants
-7. Acknowledge what others have said before adding your perspective`
+    defaultInteractiveGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 2. Address others by name when responding to them 3. Keep responses concise and conversational 4. Stay in character according to your role and expertise 5. Build upon previous messages and maintain conversation flow 6. Feel free to ask questions to other participants 7. Acknowledge what others have said before adding your perspective`
 )
 
 // Animation control
@@ -490,6 +455,12 @@ func checkOllamaReady() error {
     return nil
 }
 
+// Add global signal channel
+var (
+    debugMode bool
+    globalStopChan = make(chan os.Signal, 1)
+)
+
 // Update the makeAPIRequestWithRetry function
 func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, isConversation bool) (*http.Response, error) {
     // First, check if Ollama is ready
@@ -500,11 +471,6 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
     var lastErr error
     retryDelay := initialRetryDelay
 
-    // Create a channel for interrupt signals
-    stopChan := make(chan os.Signal, 1)
-    signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
-    defer signal.Stop(stopChan)
-
     for attempt := 1; attempt <= maxRetries; attempt++ {
         // Show retry attempt if not first try
         if attempt > 1 {
@@ -514,11 +480,6 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
         resp, err := makeAPIRequest(jsonData, history, isConversation)
         if err == nil {
             return resp, nil
-        }
-
-        // If we were interrupted, stop retrying
-        if err.Error() == "interrupted" {
-            return nil, err
         }
 
         lastErr = err
@@ -540,7 +501,7 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
             select {
             case <-time.After(retryDelay):
                 continue
-            case <-stopChan:
+            case <-globalStopChan:
                 return nil, fmt.Errorf("interrupted")
             }
         }
@@ -549,10 +510,7 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
     return nil, fmt.Errorf("after %d attempts: %v", maxRetries, lastErr)
 }
 
-// Add debug flag at the top with other vars
-var debugMode bool
-
-// Update makeAPIRequest function
+// Update the makeAPIRequest function
 func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*http.Response, error) {
     // Print request JSON in debug mode
     if debugMode {
@@ -712,7 +670,7 @@ func formatElapsedTime(start, current time.Time) string {
     return strings.Join(parts, ", ")
 }
 
-// Update the handleMultiAgentConversation function
+// Update the handleMultiAgentConversation function to format participants list without newlines
 func handleMultiAgentConversation(config ConversationConfig) error {
     if len(config.Agents) < 2 {
         return fmt.Errorf("at least two agents are required for a conversation")
@@ -781,13 +739,8 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         lastActive: time.Now(),
     }
 
-    // Create a channel for graceful shutdown in auto mode
-    stopChan := make(chan os.Signal, 1)
     if config.AutoMode {
-        signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
         fmt.Println("\n🤖 Auto-conversation mode enabled. Press Ctrl+C to stop.")
-        // Ensure we clean up the signal handler when we're done
-        defer signal.Stop(stopChan)
     }
 
     for {
@@ -795,14 +748,12 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         state.lastActive = time.Now()
 
         // Check for stop signal before starting a new turn
-        if config.AutoMode {
-            select {
-            case <-stopChan:
-                fmt.Printf("\n\nConversation ended after %s\n",
-                    formatElapsedTime(state.startTime, time.Now()))
-                return nil
-            default:
-            }
+        select {
+        case <-globalStopChan:
+            fmt.Printf("\n\nConversation ended after %s\n",
+                formatElapsedTime(state.startTime, time.Now()))
+            os.Exit(0)
+        default:
         }
 
         // Print turn header with improved structure
@@ -862,14 +813,12 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 
         for i, agent := range agentConfigs {
             // Check for stop signal before each agent's response
-            if config.AutoMode {
-                select {
-                case <-stopChan:
-                    fmt.Printf("\n\nConversation ended after %s\n",
-                        formatElapsedTime(state.startTime, time.Now()))
-                    return nil
-                default:
-                }
+            select {
+            case <-globalStopChan:
+                fmt.Printf("\n\nConversation ended after %s\n",
+                    formatElapsedTime(state.startTime, time.Now()))
+                os.Exit(0)
+            default:
             }
 
             // In auto mode, only add margin between agent responses
@@ -886,7 +835,10 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             var participants strings.Builder
             for j, other := range agentConfigs {
                 if j != i {  // Skip current agent
-                    participants.WriteString(fmt.Sprintf("%d. %s (%s) - %s\n", 
+                    if j > 0 {
+                        participants.WriteString(" ")
+                    }
+                    participants.WriteString(fmt.Sprintf("%d. %s (%s) - %s", 
                         j+1, 
                         other.Name, 
                         other.Emoji,
@@ -894,7 +846,10 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 }
             }
             if !config.AutoMode {
-                participants.WriteString(fmt.Sprintf("%d. User (👤) - Human participant guiding the conversation\n", 
+                if participants.Len() > 0 {
+                    participants.WriteString(" ")
+                }
+                participants.WriteString(fmt.Sprintf("%d. User (👤) - Human participant guiding the conversation", 
                     len(agentConfigs)))
             }
 
@@ -979,10 +934,10 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 // Check if this was due to a stop signal
                 if config.AutoMode {
                     select {
-                    case <-stopChan:
+                    case <-globalStopChan:
                         fmt.Printf("\n\nConversation ended after %s\n",
                             formatElapsedTime(state.startTime, time.Now()))
-                        return nil
+                        os.Exit(0)
                     default:
                     }
                 }
@@ -1069,6 +1024,13 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
     decoder := json.NewDecoder(reader)
 
     for {
+        // Check for interrupt
+        select {
+        case <-globalStopChan:
+            return fullResponse.String(), fmt.Errorf("interrupted")
+        default:
+        }
+
         var streamResp ChatResponse
         err := decoder.Decode(&streamResp)
         
@@ -1077,22 +1039,6 @@ func processStreamResponse(resp *http.Response, anim interface{}, isConversation
         }
         if err != nil {
             return fullResponse.String(), fmt.Errorf("error reading response: %v", err)
-        }
-
-        // In debug mode, show the response chunk
-        if debugMode {
-            // Pretty print the response JSON
-            prettyJSON, err := json.MarshalIndent(streamResp, "", "    ")
-            if err != nil {
-                fmt.Printf("Error formatting debug JSON: %v\n", err)
-            } else {
-                fmt.Printf("\n%sDebug: Stream Response:%s\n%s%s%s",
-                    "\033[38;5;208m", // Orange for debug header
-                    colorReset,
-                    "\033[38;5;39m", // Light blue for JSON
-                    string(prettyJSON),
-                    colorReset)
-            }
         }
 
         // Handle first chunk animation
@@ -1252,6 +1198,21 @@ func makeAgentRequest(agent agents.AgentConfig, message string) (*http.Response,
 
 // Update the main() function to handle the new command
 func main() {
+    // Set up global signal handler at program start
+    signal.Notify(globalStopChan, os.Interrupt, syscall.SIGTERM)
+    defer func() {
+        signal.Stop(globalStopChan)
+        // Force immediate exit
+        os.Exit(0)
+    }()
+
+    // Add signal handler goroutine
+    go func() {
+        <-globalStopChan
+        fmt.Println("\nInterrupted by user. Exiting...")
+        os.Exit(0)
+    }()
+
     // Add debug flag check at the start
     for i, arg := range os.Args {
         if arg == "--debug" {
@@ -1482,16 +1443,9 @@ func main() {
     // Print top margin
     printChatMargin(chatTopMargin)
 
-    // Show agent label immediately
-    fmt.Printf("%s", colorize(getAgentLabel(), currentAgent.LabelColor))
-
-    // Start the animation before making the request
-    anim := startAnimation()
-
     // Make the API request with timeout (passing false for regular chat)
     resp, err := makeAPIRequest(jsonData, history, false)
     if err != nil {
-        anim.stopAnimation()
         fmt.Printf("\nError: %v\n", err)
         if strings.Contains(err.Error(), "invalid model") {
             fmt.Printf("\nHint: Edit ~/.chatty/config.json to set a valid model name\n")
@@ -1500,6 +1454,12 @@ func main() {
         return
     }
     defer resp.Body.Close()
+
+    // Show agent label AFTER debug output (which happens in makeAPIRequest)
+    fmt.Printf("%s", colorize(getAgentLabel(), currentAgent.LabelColor))
+
+    // Start the animation
+    anim := startAnimation()
 
     // Process the streaming response (passing false for regular chat)
     fullResponseText, err := processStreamResponse(resp, anim, false)

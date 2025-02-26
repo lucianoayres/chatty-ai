@@ -32,3 +32,30 @@ tasks:
   default:
     desc: Run build and test tasks
     deps: [build, test]
+
+  debug:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty "Hey, sup?" --debug
+
+  debug-conv:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty --converse tux,ada --starter "Answer only with 3 words during the whole conversation" --debug
+
+  debug-auto:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty --converse tux,ada,einstein --starter "Answer only with 3 words during the whole conversation" --auto --debug
