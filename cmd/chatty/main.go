@@ -99,9 +99,6 @@ const (
     Conversation history:
     %s
 
-    Previous message was from: %s
-    Their message: "%s"
-
     Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
 
     // Add this new constant for auto conversation guidelines
@@ -125,9 +122,6 @@ const (
 
     Conversation history:
     %s
-
-    Previous message was from: %s
-    Their message: "%s"
 
     Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
 
@@ -937,14 +931,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                     }
                 }
             }
-            
-            // Get the previous message source
-            var prevMessageSource string
-            if firstMessage {
-                prevMessageSource = "User"
-            } else {
-                prevMessageSource = currentMessage
-            }
 
             context := fmt.Sprintf(templateToUse,
                 agent.Name,
@@ -953,8 +939,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 participants.String(),
                 guidelines,
                 recentHistory,
-                prevMessageSource,
-                currentMessage,
                 agent.Name)
 
             // Reset this agent's history to keep context minimal
