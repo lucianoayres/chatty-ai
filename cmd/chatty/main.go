@@ -94,13 +94,7 @@ const (
     %s
 
     Important guidelines:
-    1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
-    2. Address others by name when responding to them
-    3. Keep responses concise and conversational
-    4. Stay in character according to your role and expertise
-    5. Build upon previous messages and maintain conversation flow
-    6. Feel free to ask questions to other participants
-    7. Acknowledge what others have said before adding your perspective
+    %s
 
     Conversation history:
     %s
@@ -110,20 +104,24 @@ const (
 
     Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
 
+    // Add this new constant for auto conversation guidelines
+    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
+2. Address other agents by name when responding to them
+3. Keep responses concise and conversational
+4. Stay in character according to your role and expertise
+5. Build upon previous messages and maintain conversation flow
+6. DO NOT address or refer to the user - this is an autonomous discussion
+7. Drive the conversation forward with questions and insights for other agents
+8. Acknowledge what other agents have said before adding your perspective`
+
+    // Update the autoConversationTemplate to use the guidelines
     autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. Remember that YOU are %s - always speak in first person and never refer to yourself in third person.
 
     Current participants (excluding yourself):
     %s
 
     Important guidelines:
-    1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
-    2. Address other agents by name when responding to them
-    3. Keep responses concise and conversational
-    4. Stay in character according to your role and expertise
-    5. Build upon previous messages and maintain conversation flow
-    6. DO NOT address or refer to the user - this is an autonomous discussion
-    7. Drive the conversation forward with questions and insights for other agents
-    8. Acknowledge what other agents have said before adding your perspective
+    %s
 
     Conversation history:
     %s
@@ -158,6 +156,15 @@ const (
     converseRequestTimeout = 300 * time.Second  // Initial connection timeout for converse mode
     converseReadTimeout = 300 * time.Second    // Timeout for reading each chunk in converse mode
     converseWriteTimeout = 300 * time.Second    // Timeout for writing requests in converse mode
+
+    // Add this new constant for normal conversation guidelines
+    defaultInteractiveGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
+2. Address others by name when responding to them
+3. Keep responses concise and conversational
+4. Stay in character according to your role and expertise
+5. Build upon previous messages and maintain conversation flow
+6. Feel free to ask questions to other participants
+7. Acknowledge what others have said before adding your perspective`
 )
 
 // Animation control
@@ -880,16 +887,40 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 
             // Create conversation context with identity reinforcement
             var templateToUse string
+            var guidelines string
             if config.AutoMode {
                 templateToUse = autoConversationTemplate
+                // Get guidelines from config
+                agentConfig, err := agents.GetCurrentConfig()
+                if err != nil {
+                    guidelines = defaultAutonomousGuidelines
+                } else {
+                    if agentConfig.AutonomousGuidelines != "" {
+                        guidelines = agentConfig.AutonomousGuidelines
+                    } else {
+                        guidelines = defaultAutonomousGuidelines
+                    }
+                }
             } else {
                 templateToUse = normalConversationTemplate
+                // Get guidelines from config
+                agentConfig, err := agents.GetCurrentConfig()
+                if err != nil {
+                    guidelines = defaultInteractiveGuidelines
+                } else {
+                    if agentConfig.InteractiveGuidelines != "" {
+                        guidelines = agentConfig.InteractiveGuidelines
+                    } else {
+                        guidelines = defaultInteractiveGuidelines
+                    }
+                }
             }
             context := fmt.Sprintf(templateToUse,
                 agent.Name,
                 agent.Emoji,
                 agent.Name,
                 participants.String(),
+                guidelines,
                 recentHistory,
                 currentMessage,
                 agent.Name)

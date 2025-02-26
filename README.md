@@ -199,23 +199,63 @@ The display includes:
 
 ## ⚙️ Configuration
 
-Settings are stored in `~/.chatty/config.json`:
+Settings are stored in `~/.chatty/config.json`. The default configuration includes only required fields:
 
 ```json
 {
   "current_agent": "byte",
   "language_code": "en-US",
-  "model": "llama3.2",
-  "common_directives": "Be professional and formal..."
+  "model": "llama3.2"
 }
 ```
 
 ### Available Settings
 
+Required fields:
+
 - `current_agent`: Active AI personality (defaults to "byte")
 - `language_code`: Language for interactions (default: "en-US")
 - `model`: Ollama model to use (default: "llama3.2")
-- `common_directives`: Custom personality traits for all agents
+
+Optional fields:
+
+- `common_directives`: Override the default conversation style and behavior for all agents
+- `interactive_guidelines`: Guidelines for conversations with human participation (default mode)
+- `autonomous_guidelines`: Guidelines for autonomous agent conversations (--auto mode)
+
+Example with optional fields:
+
+```json
+{
+    "current_agent": "byte",
+    "language_code": "en-US",
+    "model": "llama3.2",
+    "common_directives": "Be professional and formal in your responses. Focus on accuracy and clarity.",
+    "interactive_guidelines": "1. Always speak in first person
+2. Address others by name
+3. Keep responses concise
+4. Stay in character
+5. Build upon previous messages
+6. Feel free to ask questions
+7. Acknowledge others before adding your view",
+    "autonomous_guidelines": "1. Always speak in first person
+2. Address other agents by name
+3. Keep responses concise
+4. Stay in character
+5. Build upon previous messages
+6. Never address the user
+7. Drive the conversation with questions
+8. Acknowledge others before adding your view"
+}
+```
+
+The guidelines settings control how agents behave in different conversation modes:
+
+- `interactive_guidelines`: Used in regular conversations where humans participate. This is the default mode when using `--converse` without the `--auto` flag. These guidelines encourage agents to interact with both human users and other agents.
+
+- `autonomous_guidelines`: Used only when the `--auto` flag is enabled. These guidelines are specifically designed for agent-to-agent conversations without human participation, encouraging more autonomous discussion between the agents.
+
+You can modify these guidelines to create different conversation dynamics or enforce specific interaction patterns. For example, you might want to make autonomous conversations more focused on debate, or interactive conversations more educational.
 
 ### Language Support
 

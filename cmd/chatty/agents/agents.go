@@ -27,6 +27,25 @@ const (
 	// Default common directives template - for natural conversations
 	defaultCommonDirectivesTemplate = `Always follow the specified language instruction above. Chat like a human friend - be brief, casual, and engaging. Provide accurate information and acknowledge uncertainty. Keep responses short and break up long explanations into dialogue. Ask questions when needed.`
 
+	// Default guidelines for interactive conversations (with human participation)
+	defaultInteractiveGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
+2. Address others by name when responding to them
+3. Keep responses concise and conversational
+4. Stay in character according to your role and expertise
+5. Build upon previous messages and maintain conversation flow
+6. Feel free to ask questions to other participants
+7. Acknowledge what others have said before adding your perspective`
+
+	// Default guidelines for autonomous conversations (agents only)
+	defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person
+2. Address other agents by name when responding to them
+3. Keep responses concise and conversational
+4. Stay in character according to your role and expertise
+5. Build upon previous messages and maintain conversation flow
+6. DO NOT address or refer to the user - this is an autonomous discussion
+7. Drive the conversation forward with questions and insights for other agents
+8. Acknowledge what other agents have said before adding your perspective`
+
 	// Built-in agents directory
 	builtinDir = "builtin"
 	// User agents directory name
@@ -41,6 +60,8 @@ type Config struct {
 	LanguageCode     string `json:"language_code,omitempty"`     // Optional: Override default language
 	CommonDirectives string `json:"common_directives,omitempty"` // Optional: Override default directives template
 	Model            string `json:"model,omitempty"`             // Optional: Override default model
+	InteractiveGuidelines string `json:"interactive_guidelines,omitempty"` // Optional: Override default guidelines for interactive conversations (with human)
+	AutonomousGuidelines  string `json:"autonomous_guidelines,omitempty"`  // Optional: Override default guidelines for autonomous conversations (agents only)
 }
 
 // AgentConfig holds all configuration for an agent's identity and appearance
@@ -93,6 +114,8 @@ func GetCurrentConfig() (*Config, error) {
 				CurrentAgent: DefaultAgent.Name,
 				LanguageCode:     defaultLanguageCode,
 				Model:            defaultModel,
+				InteractiveGuidelines: defaultInteractiveGuidelines,
+				AutonomousGuidelines:  defaultAutonomousGuidelines,
 			}, nil
 		}
 		return nil, err
@@ -109,6 +132,12 @@ func GetCurrentConfig() (*Config, error) {
 	}
 	if config.Model == "" {
 		config.Model = defaultModel
+	}
+	if config.InteractiveGuidelines == "" {
+		config.InteractiveGuidelines = defaultInteractiveGuidelines
+	}
+	if config.AutonomousGuidelines == "" {
+		config.AutonomousGuidelines = defaultAutonomousGuidelines
 	}
 
 	return &config, nil
@@ -518,12 +547,13 @@ func CreateDefaultConfig() error {
 		return nil // Config exists, do nothing
 	}
 
-	// Create default config
+	// Create default config with only required fields
 	config := Config{
 		CurrentAgent: DefaultAgent.Name,
-		LanguageCode:     defaultLanguageCode,
-		Model:            defaultModel,
-		CommonDirectives: defaultCommonDirectivesTemplate,
+		LanguageCode: defaultLanguageCode,
+		Model:        defaultModel,
+		InteractiveGuidelines: defaultInteractiveGuidelines,
+		AutonomousGuidelines:  defaultAutonomousGuidelines,
 	}
 
 	data, err := json.MarshalIndent(config, "", "    ")
@@ -544,12 +574,13 @@ func CreateDefaultConfig() error {
 func UpdateCurrentAgent(name string) error {
 	config, err := GetCurrentConfig()
 	if err != nil {
-		// If config doesn't exist, create it
+		// If config doesn't exist, create it with only required fields
 		config = &Config{
 			CurrentAgent: name,
-			LanguageCode:     defaultLanguageCode,
-			Model:            defaultModel,
-			CommonDirectives: defaultCommonDirectivesTemplate,
+			LanguageCode: defaultLanguageCode,
+			Model:        defaultModel,
+			InteractiveGuidelines: defaultInteractiveGuidelines,
+			AutonomousGuidelines:  defaultAutonomousGuidelines,
 		}
 	} else {
 		config.CurrentAgent = name
