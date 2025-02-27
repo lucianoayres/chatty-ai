@@ -89,13 +89,51 @@ const (
     frameDelay   = 200          // Milliseconds between animation frames
 
     // Conversation context templates
-    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s [this is just a description of participants to provide context, do not attribute this content as a message sent by the user] Important guidelines: Give special attention to the user's messages and always comment what they say. %s Conversation history: %s Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
+    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. 
+    This is an ongoing discussion where everyone contributes naturally. 
+    Remember that YOU are %s - always speak in first person and never refer to yourself in third person. 
+
+    Current participants (excluding yourself): %s  
+    [this is just a description of participants to provide context, do not attribute this content as a message sent by the user]  
+
+    Important guidelines:  
+    - Give special attention to the user's messages and always comment on what they say.
+    - Stick to the topic proposed by the user and do not deviate from it  
+    - In the conversation history, messages sent by a participant are indicated by the "Emoji + Name" pattern.  
+    - If a message contains another participant's name, it should not be interpreted as a message from that participant, 
+    but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name" pattern assigned to that block of the conversation history.  
+
+    Conversation history:  
+    %s  
+
+    Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
 
     // Add this new constant for auto conversation guidelines
-    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 2. Address other agents by name when responding to them 3. Keep responses concise and conversational 4. Stay in character according to your role and expertise 5. Build upon previous messages and maintain conversation flow 6. DO NOT address or refer to the user - this is an autonomous discussion 7. Drive the conversation forward with questions and insights for other agents 8. Acknowledge what other agents have said before adding your perspective`
+    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 
+    2. Address other agents by name when responding to them 
+    3. Keep responses concise and conversational 
+    4. Stay in character according to your role and expertise 
+    5. Build upon previous messages and maintain conversation flow 
+    6. DO NOT address or refer to the user - this is an autonomous discussion 
+    7. Drive the conversation forward with questions and insights for other agents 
+    8. Acknowledge what other agents have said before adding your perspective
+    9. Stick to the topic proposed by the user and do not deviate from it
+    
+    Important guidelines:  
+    - In the conversation history, messages sent by a participant are indicated by the "Emoji + Name" pattern.  
+    - If a message contains another participant's name, it should not be interpreted as a message from that participant, 
+    but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name" pattern assigned to that block of the conversation history.
+    `
 
     // Update the autoConversationTemplate to use the guidelines
-    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s Important guidelines: %s Conversation history: %s Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
+    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. 
+    The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. 
+    Remember that YOU are %s - always speak in first person and never refer to yourself in third person. 
+    Current participants (excluding yourself): %s 
+    
+    Important guidelines: %s 
+    
+    Conversation history: %s Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
 
     // Maximum number of previous messages to include in conversation context
     maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
@@ -1165,7 +1203,7 @@ func initializeChatty() error {
         "\033[1;33m", colorReset)
     fmt.Printf("   3. %sSwitch agents:%s chatty --select <name>\n",
         "\033[1;33m", colorReset)
-    fmt.Printf("   4. %sStart a group chat:%s chatty --converse rocket tux --starter \"Let's talk\"\n",
+    fmt.Printf("   4. %sStart a group chat:%s chatty --converse einstein,assimov,newton --starter \"Let's talk\"\n",
         "\033[1;33m", colorReset)
 
     fmt.Printf("\n%s💡 Pro Tips:%s\n", "\033[1;36m", colorReset)
