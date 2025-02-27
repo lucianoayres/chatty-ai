@@ -126,6 +126,9 @@ chatty --select "Sherlock Holmes"
 # Get creative with your questions
 chatty "Analyze my coffee stains and deduce my morning routine"
 
+# Save chat logs to a file
+chatty "What's the meaning of life?" --save meaning_of_life.txt
+
 # Check who you're currently talking to
 chatty --current
 
@@ -155,6 +158,10 @@ chatty --converse "Einstein","Newton","Darwin" --starter "How would you explain 
 chatty --converse-random 3 --starter "Let's have a surprise discussion!"
 chatty --converse-random 5 --starter "Brainstorm crazy ideas" --auto
 chatty --converse-random 4 --starter "What's the meaning of life?" --turns 10
+
+# Save conversation logs to a file
+chatty --converse "Einstein","Newton" --starter "Discuss gravity" --save gravity_discussion.txt
+chatty --converse-random 3 --starter "Brainstorm ideas" --auto --save brainstorm.txt
 
 # More examples
 chatty --converse Ada,Tux,Nimble --starter "How can we improve code quality?"

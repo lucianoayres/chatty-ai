@@ -42,6 +42,7 @@ type ConversationConfig struct {
     Turns      int  // 0 means infinite
     Current    int  // Current turn
     AutoMode   bool // If true, agents converse among themselves without user input
+    SaveFile   string // Path to save conversation log
 }
 
 // Add this new type for conversation history
@@ -973,6 +974,13 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 // Check if we should continue
                 if config.Turns > 0 && currentTurn >= config.Turns {
                     fmt.Printf("\nConversation completed after %d turns.\n", config.Turns)
+                    if config.SaveFile != "" {
+                        if err := saveConversationLog(config.SaveFile, conversationLog.String()); err != nil {
+                            fmt.Printf("Warning: Failed to save conversation log: %v\n", err)
+                        } else {
+                            fmt.Printf("Conversation log saved to: %s\n", config.SaveFile)
+                        }
+                    }
                     return nil
                 }
 
@@ -1001,6 +1009,13 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                         elapsedTimeColor,
                         formatElapsedTime(state.startTime, time.Now()),
                         colorReset)
+                    if config.SaveFile != "" {
+                        if err := saveConversationLog(config.SaveFile, conversationLog.String()); err != nil {
+                            fmt.Printf("Warning: Failed to save conversation log: %v\n", err)
+                        } else {
+                            fmt.Printf("Conversation log saved to: %s\n", config.SaveFile)
+                        }
+                    }
                     return nil
                 }
 
@@ -1232,6 +1247,22 @@ func readStarterFile(filePath string) (string, error) {
     return strings.TrimSpace(string(content)), nil
 }
 
+// Add this new function to save conversation logs
+func saveConversationLog(logPath string, content string) error {
+    // Create directory if it doesn't exist
+    dir := filepath.Dir(logPath)
+    if err := os.MkdirAll(dir, 0755); err != nil {
+        return fmt.Errorf("failed to create directory: %v", err)
+    }
+
+    // Write the content to the file
+    if err := os.WriteFile(logPath, []byte(content), 0644); err != nil {
+        return fmt.Errorf("failed to save conversation log: %v", err)
+    }
+
+    return nil
+}
+
 // Update the main function to handle the new command
 func main() {
     // Set up global signal handler at program start
@@ -1306,7 +1337,7 @@ func main() {
     }
 
     if len(os.Args) < 2 {
-        fmt.Println("Usage: chatty \"Your message here\"")
+        fmt.Println("Usage: chatty \"Your message here\" [--save <filename>]")
         fmt.Println("Special commands:")
         fmt.Println("  init                          Initialize Chatty environment")
         fmt.Println("  --clear [all|agent_name]      Clear chat history (all or specific agent)")
@@ -1318,12 +1349,16 @@ func main() {
         fmt.Println("      --starter-file <path>     Read initial message from a text file")
         fmt.Println("      --turns N                 Number of conversation turns (default: infinite)")
         fmt.Println("      --auto                    Enable autonomous conversation mode")
+        fmt.Println("      --save <filename>         Save conversation log to a file")
         fmt.Println("  --converse-random <N>         Start a conversation with N random agents")
         fmt.Println("      --starter \"message\"       Initial message to start the conversation")
         fmt.Println("      --starter-file <path>     Read initial message from a text file")
         fmt.Println("      --turns N                 Number of conversation turns (default: infinite)")
         fmt.Println("      --auto                    Enable autonomous conversation mode")
+        fmt.Println("      --save <filename>         Save conversation log to a file")
         fmt.Println("  --debug                       Show debug information including request JSON")
+        fmt.Println("\nOptions for simple chat mode:")
+        fmt.Println("  --save <filename>             Save conversation log to a file")
         return
     }
 
@@ -1331,12 +1366,13 @@ func main() {
     switch os.Args[1] {
     case "--converse-random":
         if len(os.Args) < 3 {
-            fmt.Println("Usage: chatty --converse-random <number_of_agents> [--starter \"message\" | --starter-file <path>] [--turns N] [--auto]")
+            fmt.Println("Usage: chatty --converse-random <number_of_agents> [--starter \"message\" | --starter-file <path>] [--turns N] [--auto] [--save <filename>]")
             fmt.Println("\nOptions:")
             fmt.Println("  --starter \"message\"      Initial message to start the conversation")
             fmt.Println("  --starter-file <path>    Read initial message from a text file")
             fmt.Println("  --turns N                Number of conversation turns (default: infinite)")
             fmt.Println("  --auto                   Enable autonomous conversation mode (agents talk among themselves)")
+            fmt.Println("  --save <filename>        Save conversation log to a file")
             return
         }
 
@@ -1360,11 +1396,12 @@ func main() {
         var turns int
         var foundStarterArg bool
         var autoMode bool
+        var saveFile string
 
         // Set the randomly selected agents
         config.Agents = selectedAgents
 
-        // Find the --starter or --starter-file argument and check for --auto
+        // Find the --starter or --starter-file argument and check for --auto and --save
         for i := 3; i < len(os.Args); i++ {
             switch os.Args[i] {
             case "--starter":
@@ -1409,6 +1446,14 @@ func main() {
                     }
                     i++
                 }
+            case "--save":
+                if i+1 >= len(os.Args) {
+                    fmt.Println("Error: --save argument is missing")
+                    fmt.Println("\nUsage: --save <filename>")
+                    return
+                }
+                saveFile = os.Args[i+1]
+                i++
             }
         }
 
@@ -1427,6 +1472,7 @@ func main() {
         config.Starter = starter
         config.Turns = turns
         config.AutoMode = autoMode
+        config.SaveFile = saveFile
 
         if err := handleMultiAgentConversation(config); err != nil {
             fmt.Printf("Error: %v\n", err)
@@ -1435,12 +1481,13 @@ func main() {
         return
     case "--converse":
         if len(os.Args) < 4 {
-            fmt.Println("Usage: chatty --converse agent1,agent2[,agent3...] [--starter \"message\" | --starter-file <path>] [--turns N] [--auto]")
+            fmt.Println("Usage: chatty --converse agent1,agent2[,agent3...] [--starter \"message\" | --starter-file <path>] [--turns N] [--auto] [--save <filename>]")
             fmt.Println("\nOptions:")
             fmt.Println("  --starter \"message\"      Initial message to start the conversation")
             fmt.Println("  --starter-file <path>    Read initial message from a text file")
             fmt.Println("  --turns N                Number of conversation turns (default: infinite)")
             fmt.Println("  --auto                   Enable autonomous conversation mode (agents talk among themselves)")
+            fmt.Println("  --save <filename>        Save conversation log to a file")
             return
         }
 
@@ -1450,6 +1497,7 @@ func main() {
         var turns int
         var foundStarterArg bool
         var autoMode bool
+        var saveFile string
 
         // Parse the comma-separated agent names
         agentList := strings.Split(os.Args[2], ",")
@@ -1461,7 +1509,7 @@ func main() {
             }
         }
 
-        // Find the --starter or --starter-file argument and check for --auto
+        // Find the --starter or --starter-file argument and check for --auto and --save
         for i := 3; i < len(os.Args); i++ {
             switch os.Args[i] {
             case "--starter":
@@ -1506,6 +1554,14 @@ func main() {
                     }
                     i++
                 }
+            case "--save":
+                if i+1 >= len(os.Args) {
+                    fmt.Println("Error: --save argument is missing")
+                    fmt.Println("\nUsage: --save <filename>")
+                    return
+                }
+                saveFile = os.Args[i+1]
+                i++
             }
         }
 
@@ -1530,6 +1586,7 @@ func main() {
         config.Starter = starter
         config.Turns = turns
         config.AutoMode = autoMode
+        config.SaveFile = saveFile
 
         if err := handleMultiAgentConversation(config); err != nil {
             fmt.Printf("Error: %v\n", err)
@@ -1580,7 +1637,28 @@ func main() {
         return
     }
 
-    userInput := strings.Join(os.Args[1:], " ")
+    // Parse arguments for --save
+    var saveFile string
+    var messageArgs []string
+    for i := 1; i < len(os.Args); i++ {
+        if os.Args[i] == "--save" {
+            if i+1 >= len(os.Args) {
+                fmt.Println("Error: --save argument is missing")
+                fmt.Println("\nUsage: --save <filename>")
+                return
+            }
+            saveFile = os.Args[i+1]
+            i++ // Skip the filename in next iteration
+        } else {
+            messageArgs = append(messageArgs, os.Args[i])
+        }
+    }
+
+    userInput := strings.Join(messageArgs, " ")
+    if userInput == "" {
+        fmt.Println("Error: message cannot be empty")
+        return
+    }
     
     // Load existing history
     history, err := loadHistory()
@@ -1646,6 +1724,22 @@ func main() {
         Role:    "agent",
         Content: fullResponseText,
     })
+
+    // Save conversation log if requested
+    if saveFile != "" {
+        var conversationLog strings.Builder
+        conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", userInput))
+        conversationLog.WriteString(fmt.Sprintf("%s %s: %s\n", 
+            currentAgent.Emoji, 
+            currentAgent.Name, 
+            fullResponseText))
+        
+        if err := saveConversationLog(saveFile, conversationLog.String()); err != nil {
+            fmt.Printf("Warning: Failed to save conversation log: %v\n", err)
+        } else {
+            fmt.Printf("Conversation log saved to: %s\n", saveFile)
+        }
+    }
 
     // Save updated history
     if err := saveHistory(history); err != nil {
