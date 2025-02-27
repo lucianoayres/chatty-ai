@@ -60,6 +60,15 @@ tasks:
       - chatty init
       - chatty --converse tux,ada,einstein --starter "Lets talk about flying elephants" --auto
 
+  run-auto-15:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty --converse aristotle,zeus,asimov,beethoven,cleopatra,dracula,einstein,gandalf,marx,turing,kafka,feynman,newton,plato,tesla --starter "Plan the world domination through the internet" --auto
+
   debug:
     desc: Run the chatty binary in debug mode
     cmds:
