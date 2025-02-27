@@ -33,6 +33,14 @@ tasks:
     desc: Run build and test tasks
     deps: [build, test]
 
+  restart:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+
   run:
     desc: Run the chatty binary in debug mode
     cmds:

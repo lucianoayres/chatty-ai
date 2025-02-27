@@ -600,6 +600,29 @@ func UpdateCurrentAgent(name string) error {
 	return os.WriteFile(configPath, data, 0644)
 }
 
+// GetAllAgentNames returns all available agent names
+func GetAllAgentNames() []string {
+	refreshIfNeeded()
+
+	cache.mutex.RLock()
+	defer cache.mutex.RUnlock()
+
+	// Create a slice to hold all agent names
+	allAgents := make([]string, 0, len(cache.agents))
+
+	// Add built-in agents in their original order
+	for _, name := range cache.builtinOrder {
+		allAgents = append(allAgents, name)
+	}
+
+	// Add user-defined agents in their original order
+	for _, name := range cache.userOrder {
+		allAgents = append(allAgents, name)
+	}
+
+	return allAgents
+}
+
 // Initialize agents on package load
 func init() {
 	// Only initialize the cache

@@ -6,6 +6,7 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 
 - 🎭 **Rich Character Roster**: From Shakespeare to Einstein, Plato to Marie Curie - engage with personalities who shaped history
 - 🗣️ **Multi-Agent Conversations**: Create unique discussions between up to 15 different characters
+- 🎲 **Random Conversations**: Let fate decide your conversation partners for unexpected and exciting discussions
 - 🤖 **Autonomous Mode**: Watch as historical figures and experts discuss topics on their own
 - 🌈 **Beautiful Terminal UI**: Real-time streaming responses with custom colors and animations
 - 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
@@ -34,6 +35,9 @@ chatty --converse "Shakespeare,Jane Austen,Gandalf" --starter "Let's play Two Tr
 
 # Create the movie plot of your dreams
 chatty --converse "Cleopatra,Asimov,Beethoven" --starter "Encene a movie called Cybor Hamsters: Escape from the Moon" --auto
+
+# Let fate decide your conversation partners
+chatty --converse-random 4 --starter "Let's have a completely unexpected discussion!" --auto
 
 # Unlearn everything you know about any topic
 chatty --converse Zeus,Turing,Tux --starter "Explain how the cloud works, wrong answers only" --auto
@@ -147,6 +151,11 @@ chatty --converse "Edgar Allan Poe","Mark Twain",Shakespeare --starter "Write a 
 # You can also use quotes for all names (recommended for consistency)
 chatty --converse "Einstein","Newton","Darwin" --starter "How would you explain gravity?"
 
+# Random agent conversations - let fate decide!
+chatty --converse-random 3 --starter "Let's have a surprise discussion!"
+chatty --converse-random 5 --starter "Brainstorm crazy ideas" --auto
+chatty --converse-random 4 --starter "What's the meaning of life?" --turns 10
+
 # More examples
 chatty --converse Ada,Tux,Nimble --starter "How can we improve code quality?"
 chatty --converse "Marie Curie","Ada Lovelace",Einstein --starter "Women in science"
@@ -154,6 +163,10 @@ chatty --converse Mozart,"Louis Armstrong","Elvis Presley" --starter "Future of 
 
 # Using special characters (escape with \)
 chatty --converse Ada,Tux --starter "How to make \$100 last a month?"
+
+# Use a text file as the starter message
+chatty --converse "Shakespeare","Tolkien" --starter-file story_prompt.txt
+chatty --converse-random 3 --starter-file research_topic.txt
 
 # Auto mode and turn limits work the same way
 chatty --converse Einstein,Newton --starter "Discuss gravity" --auto
@@ -165,6 +178,13 @@ chatty --converse "Marie Curie",Einstein --starter "Future of physics" --turns 5
 - Skip quotes for single-word names: `Ada,Tux,Einstein`
 - Use quotes only for multi-word names: `"Marie Curie",Einstein,Newton`
 - Use quotes for all names (recommended): `"Einstein","Newton","Darwin"`
+
+When using `--converse-random`, just specify the number of agents (between 2 and 15) you want in the conversation. The agents will be randomly selected from both built-in and user-defined agents.
+
+You can provide the starter message in two ways:
+
+- Using `--starter "message"` for direct text input
+- Using `--starter-file path` to read the message from a text file
 
 ### How Conversations Work
 
