@@ -88,7 +88,7 @@ const (
     frameDelay   = 200          // Milliseconds between animation frames
 
     // Conversation context templates
-    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s Important guidelines: %s Conversation history: %s Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
+    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. This is an ongoing discussion where everyone contributes naturally. Remember that YOU are %s - always speak in first person and never refer to yourself in third person. Current participants (excluding yourself): %s [this is just a description of participants to provide context, do not attribute this content as a message sent by the user] Important guidelines: Give special attention to the user's messages and always comment what they say. %s Conversation history: %s Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
 
     // Add this new constant for auto conversation guidelines
     defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 2. Address other agents by name when responding to them 3. Keep responses concise and conversational 4. Stay in character according to your role and expertise 5. Build upon previous messages and maintain conversation flow 6. DO NOT address or refer to the user - this is an autonomous discussion 7. Drive the conversation forward with questions and insights for other agents 8. Acknowledge what other agents have said before adding your perspective`
@@ -759,6 +759,9 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         // Print turn header with improved structure
         elapsed := formatElapsedTime(state.startTime, state.lastActive)
         
+        // Add single blank line before the top separator
+        fmt.Println()
+        
         // Print top separator
         fmt.Printf("%s%s%s\n", turnSeparatorColor, strings.Repeat("─", 60), colorReset)
         
@@ -792,23 +795,21 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             timeValueColor, elapsed,
             colorReset)
             
-        // Print bottom separator and add exactly one line break
+        // Print bottom separator
         fmt.Printf("%s%s%s\n", turnSeparatorColor, strings.Repeat("─", 60), colorReset)
 
         // Print the user's message at the start of each turn
         if firstMessage {
-            // Add single blank line before user message
-            fmt.Println()
+            fmt.Println()  // Single blank line after separator
             fmt.Println(colorize(formatUserMessage(config.Starter), "\033[1;36m"))
             firstMessage = false
-            // Add blank line after first message in both auto and normal modes
-            fmt.Println()
+            fmt.Println()  // Single blank line after user message
         } else if !config.AutoMode {
-            // Only show user messages in non-auto mode after first turn
+            fmt.Println()  // Single blank line after separator
             fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
+            fmt.Println()  // Single blank line after user message
         } else {
-            // In auto mode after first turn, add blank line before first agent response
-            fmt.Println()
+            fmt.Println()  // Single blank line after separator for auto mode
         }
 
         for i, agent := range agentConfigs {
@@ -1443,9 +1444,14 @@ func main() {
     // Print top margin
     printChatMargin(chatTopMargin)
 
+    // Start the animation before making the API request
+    fmt.Printf("%s", colorize(getAgentLabel(), currentAgent.LabelColor))
+    anim := startAnimation()
+
     // Make the API request with timeout (passing false for regular chat)
     resp, err := makeAPIRequest(jsonData, history, false)
     if err != nil {
+        anim.stopAnimation() // Stop animation on error
         fmt.Printf("\nError: %v\n", err)
         if strings.Contains(err.Error(), "invalid model") {
             fmt.Printf("\nHint: Edit ~/.chatty/config.json to set a valid model name\n")
@@ -1454,12 +1460,6 @@ func main() {
         return
     }
     defer resp.Body.Close()
-
-    // Show agent label AFTER debug output (which happens in makeAPIRequest)
-    fmt.Printf("%s", colorize(getAgentLabel(), currentAgent.LabelColor))
-
-    // Start the animation
-    anim := startAnimation()
 
     // Process the streaming response (passing false for regular chat)
     fullResponseText, err := processStreamResponse(resp, anim, false)

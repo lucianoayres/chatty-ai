@@ -33,6 +33,33 @@ tasks:
     desc: Run build and test tasks
     deps: [build, test]
 
+  run:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty "Hey, sup?"
+
+  run-conv:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty --converse tux,ada --starter "Answer only with 3 words during the whole conversation"
+
+  run-auto:
+    desc: Run the chatty binary in debug mode
+    cmds:
+      - task uninstall
+      - task build
+      - task install
+      - chatty init
+      - chatty --converse tux,ada,einstein --starter "Lets talk about flying elephants" --auto
+
   debug:
     desc: Run the chatty binary in debug mode
     cmds:
