@@ -56,6 +56,32 @@ type ConversationAnimation struct {
     agent agents.AgentConfig
 }
 
+// Visual formatting constants
+const (
+	// Maximum number of previous messages to include in conversation context
+	maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
+
+	// Visual formatting for turns
+	turnEmoji = "💭"  // Changed to speech bubble for conversation
+	turnColor = "\033[1;35m" // Bright magenta
+	turnNumberColor = "\033[1;36m" // Bright cyan
+	turnSeparator = "•" // Bullet point separator
+	turnSeparatorColor = "\033[38;5;240m" // Dark gray
+
+	// Visual formatting for time
+	timeIndicatorColor = "\033[38;5;246m" // Medium gray
+	timeEmojiColor = "\033[38;5;220m" // Yellow for time emoji
+	timeEmoji = "⏱️"
+	timeHeaderColor = "\033[38;5;75m"  // Light blue for headers
+	timeValueColor = "\033[38;5;252m"  // Light gray for values
+	startTimeEmoji = "🗓️"  // Calendar emoji
+
+	// Visual formatting for input
+	inputPromptColor = "\033[1;37m" // Bright white
+	inputHintColor = "\033[2;37m" // Dim gray
+	elapsedTimeColor = "\033[38;5;246m" // Gray
+) 
+
 const (
     // Core configuration
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
@@ -87,74 +113,6 @@ const (
     
     // Animation configuration
     frameDelay   = 200          // Milliseconds between animation frames
-
-    // Conversation context templates
-    normalConversationTemplate = `You are %s (%s) participating in a group conversation with other AI agents and a human user. 
-    This is an ongoing discussion where everyone contributes naturally. 
-    Remember that YOU are %s - always speak in first person and never refer to yourself in third person. 
-
-    Current participants (excluding yourself): %s  
-    [this is just a description of participants to provide context, do not attribute this content as a message sent by the user]  
-
-    Important guidelines:  
-    - Give special attention to the user's messages and always comment on what they say.
-    - Stick to the topic proposed by the user and do not deviate from it  
-    - In the conversation history, messages sent by a participant are indicated by the "Emoji + Name" pattern.  
-    - If a message contains another participant's name, it should not be interpreted as a message from that participant, 
-    but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name" pattern assigned to that block of the conversation history.  
-
-    Conversation history:  
-    %s  
-
-    Please respond naturally as part of this group conversation, keeping in mind that you are %s.`
-
-    // Add this new constant for auto conversation guidelines
-    defaultAutonomousGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 
-    2. Address other agents by name when responding to them 
-    3. Keep responses concise and conversational 
-    4. Stay in character according to your role and expertise 
-    5. Build upon previous messages and maintain conversation flow 
-    6. DO NOT address or refer to the user - this is an autonomous discussion 
-    7. Drive the conversation forward with questions and insights for other agents 
-    8. Acknowledge what other agents have said before adding your perspective
-    9. Stick to the topic proposed by the user and do not deviate from it
-    
-    Important guidelines:  
-    - In the conversation history, messages sent by a participant are indicated by the "Emoji + Name" pattern.  
-    - If a message contains another participant's name, it should not be interpreted as a message from that participant, 
-    but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name" pattern assigned to that block of the conversation history.
-    `
-
-    // Update the autoConversationTemplate to use the guidelines
-    autoConversationTemplate = `You are %s (%s) participating in an autonomous discussion with other AI agents. 
-    The human user has provided an initial topic but will not participate further - this is a self-sustaining conversation between AI agents only. 
-    Remember that YOU are %s - always speak in first person and never refer to yourself in third person. 
-    Current participants (excluding yourself): %s 
-    
-    Important guidelines: %s 
-    
-    Conversation history: %s Please respond naturally as part of this autonomous discussion, keeping in mind that you are %s.`
-
-    // Maximum number of previous messages to include in conversation context
-    maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
-
-    // Visual formatting
-    turnEmoji = "💭"  // Changed to speech bubble for conversation
-    turnColor = "\033[1;35m" // Bright magenta
-    turnNumberColor = "\033[1;36m" // Bright cyan
-    turnSeparator = "•" // Bullet point separator
-    turnSeparatorColor = "\033[38;5;240m" // Dark gray
-    timeIndicatorColor = "\033[38;5;246m" // Medium gray
-    timeEmojiColor = "\033[38;5;220m" // Yellow for time emoji
-    timeEmoji = "⏱️"
-    inputPromptColor = "\033[1;37m" // Bright white
-    inputHintColor = "\033[2;37m" // Dim gray
-    elapsedTimeColor = "\033[38;5;246m" // Gray
-
-    // Visual formatting for time
-    timeHeaderColor = "\033[38;5;75m"  // Light blue for headers
-    timeValueColor = "\033[38;5;252m"  // Light gray for values
-    startTimeEmoji = "🗓️"  // Calendar emoji
 
     // Conversation mode timeouts (much higher due to multiple agents and longer responses)
     converseRequestTimeout = 300 * time.Second  // Initial connection timeout for converse mode
@@ -216,7 +174,8 @@ var currentAgent = agents.DefaultAgent
 
 // Get system message using agent name
 func getSystemMessage() string {
-    return currentAgent.GetFullSystemMessage()
+    // Single agent chat is never in auto mode
+    return currentAgent.GetFullSystemMessage(false)
 }
 
 // Format text with color if enabled
@@ -762,7 +721,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         // Initialize with system message and conversation context
         histories[i] = []Message{{
             Role:    "system",
-            Content: agent.GetFullSystemMessage(),
+            Content: agent.GetFullSystemMessage(config.AutoMode),
         }}
     }
 
@@ -896,57 +855,30 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             // Get recent conversation history
             recentHistory := getRecentConversationHistory(conversationLog.String())
 
-            // Create conversation context with identity reinforcement
+            // Get template based on conversation mode
             var templateToUse string
-            var guidelines string
             if config.AutoMode {
-                templateToUse = autoConversationTemplate
-                // Get guidelines from config
-                agentConfig, err := agents.GetCurrentConfig()
-                if err != nil {
-                    guidelines = defaultAutonomousGuidelines
-                } else {
-                    if agentConfig.AutonomousGuidelines != "" {
-                        guidelines = agentConfig.AutonomousGuidelines
-                    } else {
-                        guidelines = defaultAutonomousGuidelines
-                    }
-                }
+                templateToUse = agents.GetAutoConversationTemplate()
             } else {
-                templateToUse = normalConversationTemplate
-                // Get guidelines from config
-                agentConfig, err := agents.GetCurrentConfig()
-                if err != nil {
-                    guidelines = defaultInteractiveGuidelines
-                } else {
-                    if agentConfig.InteractiveGuidelines != "" {
-                        guidelines = agentConfig.InteractiveGuidelines
-                    } else {
-                        guidelines = defaultInteractiveGuidelines
-                    }
-                }
+                templateToUse = agents.GetNormalConversationTemplate()
             }
 
-            context := fmt.Sprintf(templateToUse,
-                agent.Name,
-                agent.Emoji,
-                agent.Name,
-                participants.String(),
-                guidelines,
-                recentHistory,
-                agent.Name)
-
             // Reset this agent's history to keep context minimal
-            histories[i] = []Message{{
-                Role:    "system",
-                Content: agent.GetFullSystemMessage(),
-            }}
-
-            // Add only the current context
-            histories[i] = append(histories[i], Message{
-                Role:    "user",
-                Content: context + "\n\nYour response:",
-            })
+            histories[i] = []Message{
+                {
+                    Role:    "system",
+                    Content: agent.GetFullSystemMessage(config.AutoMode),
+                },
+                {
+                    Role:    "user",
+                    Content: fmt.Sprintf(templateToUse,
+                        agent.Name,
+                        agent.Emoji,
+                        participants.String(),
+                        recentHistory,
+                        agent.Name),
+                },
+            }
 
             // Prepare the request with full conversation history
             chatReq := ChatRequest{
@@ -1225,7 +1157,7 @@ func makeAgentRequest(agent agents.AgentConfig, message string) (*http.Response,
     // Initialize history with just the system message for this conversation
     history := []Message{{
         Role:    "system",
-        Content: agent.GetFullSystemMessage(),
+        Content: agent.GetFullSystemMessage(false), // Single agent requests are never in auto mode
     }}
 
     // Add the current message
