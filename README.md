@@ -12,6 +12,16 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 - 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
 - 📝 **Persistent Memory**: Each agent remembers your conversations
 
+## 🔧 Prerequisites
+
+Chatty requires [Ollama](https://ollama.ai) to run the AI models:
+
+```bash
+# Install Ollama from https://ollama.ai
+# Then start the Ollama service:
+ollama serve
+```
+
 ## 🚀 Quick Start
 
 ```bash
