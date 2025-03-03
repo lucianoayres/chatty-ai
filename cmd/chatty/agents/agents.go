@@ -22,7 +22,7 @@ const (
 	defaultModel = "llama3.2"
 
 	// Default agent name
-	defaultAgentName = "byte"
+	defaultAgentName = "chatty"
 
 	// Built-in agents directory
 	builtinDir = "builtin"

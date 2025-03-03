@@ -1,4 +1,4 @@
-# Chatty AI
+# 💬 Chatty Ai
 
 ![Chat AI Banner](images/chatty_ai_banner.png)
 
@@ -247,7 +247,7 @@ Settings are stored in `~/.chatty/config.json`. The default configuration includ
 
 ```json
 {
-  "current_agent": "byte",
+  "current_agent": "chatty",
   "language_code": "en-US",
   "model": "llama3.2"
 }
@@ -257,7 +257,7 @@ Settings are stored in `~/.chatty/config.json`. The default configuration includ
 
 Required fields:
 
-- `current_agent`: Active AI personality (defaults to "byte")
+- `current_agent`: Active AI personality (defaults to "chatty")
 - `language_code`: Language for interactions (default: "en-US")
 - `model`: Ollama model to use (default: "llama3.2")
 
@@ -271,7 +271,7 @@ Example with optional fields:
 
 ```json
 {
-    "current_agent": "byte",
+    "current_agent": "chatty",
     "language_code": "en-US",
     "model": "llama3.2",
     "common_directives": "Be professional and formal in your responses. Focus on accuracy and clarity.",
