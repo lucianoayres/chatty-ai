@@ -44,16 +44,6 @@ type Config struct {
 	AutoMode           bool   `json:"auto_mode,omitempty"`            // Optional: Override default auto mode
 }
 
-// Default configuration
-var defaultConfig = Config{
-	CurrentAgent: defaultAgentName,
-	LanguageCode: defaultLanguageCode,
-	CommonDirectives: GetDefaultBaseGuidelines(),
-	Model: defaultModel,
-	InteractiveGuidelines: GetDefaultInteractiveGuidelines(),
-	AutonomousGuidelines:  GetDefaultAutonomousGuidelines(),
-	AutoMode: false,
-}
 
 // AgentConfig holds all configuration for an agent's identity and appearance
 type AgentConfig struct {
@@ -137,52 +127,6 @@ func GetCurrentConfig() (*Config, error) {
 	}
 
 	return &config, nil
-}
-
-// getCommonDirectives returns the common directives with the current language code
-func getCommonDirectives() (string, error) {
-	config, err := GetCurrentConfig()
-	if err != nil {
-		// Return default config if file doesn't exist
-		defaultConfig := &Config{
-			CurrentAgent: DefaultAgent.Name,
-			LanguageCode: defaultLanguageCode,
-			Model: defaultModel,
-			BaseGuidelines: GetDefaultBaseGuidelines(),
-			InteractiveGuidelines: GetDefaultInteractiveGuidelines(),
-			AutonomousGuidelines: GetDefaultAutonomousGuidelines(),
-			AutoMode: false,
-		}
-		// Combine base guidelines with mode-specific guidelines
-		var guidelines strings.Builder
-		guidelines.WriteString(baseGuidelines)
-		guidelines.WriteString("\n\n")
-		if defaultConfig.AutoMode {
-			guidelines.WriteString(autonomousGuidelines)
-		} else {
-			guidelines.WriteString(interactiveGuidelines)
-		}
-		return formatWithLanguage(defaultLanguageCode, guidelines.String()), nil
-	}
-
-	// Get language code
-	languageCode := config.LanguageCode
-	if languageCode == "" {
-		languageCode = defaultLanguageCode
-	}
-
-	// Combine base guidelines with mode-specific guidelines
-	var guidelines strings.Builder
-	guidelines.WriteString(baseGuidelines)
-	guidelines.WriteString("\n\n")
-	if config.AutoMode {
-		guidelines.WriteString(autonomousGuidelines)
-	} else {
-		guidelines.WriteString(interactiveGuidelines)
-	}
-
-	// Make language instruction explicit and mandatory
-	return formatWithLanguage(languageCode, guidelines.String()), nil
 }
 
 // Get complete system message including directives
@@ -639,15 +583,9 @@ func GetAllAgentNames() []string {
 	// Create a slice to hold all agent names
 	allAgents := make([]string, 0, len(cache.agents))
 
-	// Add built-in agents in their original order
-	for _, name := range cache.builtinOrder {
-		allAgents = append(allAgents, name)
-	}
-
-	// Add user-defined agents in their original order
-	for _, name := range cache.userOrder {
-		allAgents = append(allAgents, name)
-	}
+	// Add built-in agents and user-defined agents
+	allAgents = append(allAgents, cache.builtinOrder...)
+	allAgents = append(allAgents, cache.userOrder...)
 
 	return allAgents
 }

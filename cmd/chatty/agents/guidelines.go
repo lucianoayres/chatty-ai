@@ -113,38 +113,6 @@ func GetDefaultBaseGuidelines() string {
 	return baseGuidelines
 }
 
-// buildGuidelines combines base guidelines with mode-specific guidelines and conversation history instructions
-func buildGuidelines(isAutonomous bool, customBaseGuidelines, customModeGuidelines string) string {
-	var guidelines strings.Builder
-
-	// Add base guidelines (custom or default)
-	if customBaseGuidelines != "" {
-		guidelines.WriteString(customBaseGuidelines)
-	} else {
-		guidelines.WriteString(baseGuidelines)
-	}
-	
-	// Add newline before mode-specific guidelines
-	guidelines.WriteString("\n\n")
-	
-	// Add mode-specific guidelines (custom or default)
-	if customModeGuidelines != "" {
-		guidelines.WriteString(customModeGuidelines)
-	} else {
-		if isAutonomous {
-			guidelines.WriteString(autonomousGuidelines)
-		} else {
-			guidelines.WriteString(interactiveGuidelines)
-		}
-	}
-	
-	// Always append conversation history instructions
-	guidelines.WriteString("\n\n")
-	guidelines.WriteString(conversationHistoryInstructions)
-	
-	return guidelines.String()
-}
-
 // buildConversationTemplate constructs the full template based on the mode
 func buildConversationTemplate(isAutonomous bool) string {
 	var template strings.Builder

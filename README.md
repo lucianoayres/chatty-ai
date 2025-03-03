@@ -1,4 +1,8 @@
-# Chatty AI Agents 🤖
+# Chatty AI
+
+![Chat AI Banner](images/chatty_ai_banner.png)
+
+## Chat with Historical Figures, Scientists, and Experts
 
 Transform your terminal into a vibrant AI-powered workspace where historical figures, scientists, philosophers, and experts come alive! Chatty isn't just another CLI tool - it's your gateway to engaging conversations with some of history's most fascinating minds.
 
@@ -25,7 +29,10 @@ ollama serve
 ## 🚀 Quick Start
 
 ```bash
-# Install Ollama first (https://ollama.ai)
+# Install Ollama first (https://ollama.ai) and pull llama3.2 model
+ollama pull llama3.2
+
+# Start the Ollama service
 ollama serve
 
 # First-time setup (required)
