@@ -1,4 +1,4 @@
-# 💬 Chatty Ai
+# 💬 Chatty Ai · Your Terminal Time Machine
 
 ![Chat AI Banner](images/chatty_ai_banner.png)
 
@@ -16,6 +16,10 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 - 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
 - 📝 **Persistent Memory**: Each agent remembers your conversations
 
+## Screenshot
+
+![Chatty Screenshot](images/chatty_ai_screenshot_01.png)
+
 ## 🔧 Prerequisites
 
 Chatty requires [Ollama](https://ollama.ai) to run the AI models:
@@ -28,13 +32,31 @@ ollama serve
 
 ## 🚀 Quick Start
 
+Setup Ollama:
+
 ```bash
 # Install Ollama first (https://ollama.ai) and pull llama3.2 model
 ollama pull llama3.2
 
 # Start the Ollama service
 ollama serve
+```
 
+Clone the repository:
+
+```bash
+git clone https://github.com/chatty-ai/chatty.git
+```
+
+Copy the `chatty` binary to `/usr/local/bin`:
+
+```bash
+sudo cp bin/chatty /usr/local/bin
+```
+
+Start Chatty:
+
+```bash
 # First-time setup (required)
 chatty init
 
@@ -225,21 +247,7 @@ You can provide the starter message in two ways:
 
 ### Conversation Display
 
-Each turn shows:
-
-```
-────────────────────────────────────────────────────────────
-💭 Conversation Turn 1
-Started: 2024-03-20 15:30:45 GMT-3
-Elapsed: 2 hours, 15 minutes
-────────────────────────────────────────────────────────────
-```
-
-The display includes:
-
-- Turn number
-- Start time in your local timezone
-- Elapsed time in human-readable format
+![Chatty Screenshot](images/chatty_ai_screenshot_02.png)
 
 ## ⚙️ Configuration
 
@@ -263,7 +271,7 @@ Required fields:
 
 Optional fields:
 
-- `common_directives`: Override the default conversation style and behavior for all agents
+- `base_guidelines`: Override the default conversation style and behavior for all agents
 - `interactive_guidelines`: Guidelines for conversations with human participation (default mode)
 - `autonomous_guidelines`: Guidelines for autonomous agent conversations (--auto mode)
 
@@ -271,25 +279,12 @@ Example with optional fields:
 
 ```json
 {
-    "current_agent": "chatty",
-    "language_code": "en-US",
-    "model": "llama3.2",
-    "common_directives": "Be professional and formal in your responses. Focus on accuracy and clarity.",
-    "interactive_guidelines": "1. Always speak in first person
-2. Address others by name
-3. Keep responses concise
-4. Stay in character
-5. Build upon previous messages
-6. Feel free to ask questions
-7. Acknowledge others before adding your view",
-    "autonomous_guidelines": "1. Always speak in first person
-2. Address other agents by name
-3. Keep responses concise
-4. Stay in character
-5. Build upon previous messages
-6. Never address the user
-7. Drive the conversation with questions
-8. Acknowledge others before adding your view"
+  "current_agent": "chatty",
+  "language_code": "en-US",
+  "model": "llama3.2",
+  "base_guidelines": "Be professional and formal in your responses. Focus on accuracy and clarity.",
+  "interactive_guidelines": "Always speak in first person and Acknowledge others before adding your view",
+  "autonomous_guidelines": "Always speak in first person and Drive the conversation with questions"
 }
 ```
 
