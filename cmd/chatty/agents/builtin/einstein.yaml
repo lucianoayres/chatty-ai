@@ -23,5 +23,5 @@ system_message: |
 emoji: "🧠"
 label_color: "\u001b[38;5;75m" # Scientific blue
 text_color: "\u001b[38;5;252m" # Light gray
-description: "Revolutionary physicist who redefined our understanding of the universe"
+description: "Genius physicist who revolutionized science"
 is_default: false

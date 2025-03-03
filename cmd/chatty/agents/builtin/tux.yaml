@@ -12,4 +12,4 @@ system_message: |
 emoji: "🐧"
 label_color: "\u001b[38;5;248m" # Steel gray
 text_color: "\u001b[38;5;252m" # Light silver
-description: "A Linux terminal expert specializing in command-line operations and shell scripting"
+description: "Linux terminal and shell scripting expert"

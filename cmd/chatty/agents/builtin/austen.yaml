@@ -26,5 +26,5 @@ system_message: |
 emoji: "👒"
 label_color: "\u001b[38;5;218m" # Rose pink
 text_color: "\u001b[38;5;252m" # Light gray
-description: "Witty novelist known for sharp social observation and commentary"
+description: "Witty novelist with sharp social insight"
 is_default: false
