@@ -1013,11 +1013,20 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                     return nil
                 }
 
-                // Print margins
-                for i := 0; i < converseMargin; i++ {
-                    fmt.Println()
-                }
-
+                // Update conversation log
+                conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", currentMessage))
+                
+                // Add user message to history
+                history := append(histories[i], Message{
+                    Role:    "user",
+                    Content: currentMessage,
+                })
+                
+                // Update history for this agent
+                histories[i] = history
+                
+                fmt.Println()  // Single blank line after user input
+                
                 currentTurn++
             }
         }
@@ -1229,6 +1238,209 @@ func saveConversationLog(logPath string, content string) error {
     return nil
 }
 
+// Add a new function to handle single-agent chat
+func handleSingleAgentChat(agentName string, starter string, saveFile string) error {
+    // Validate agent exists
+    if !agents.IsValidAgent(agentName) {
+        return fmt.Errorf("invalid agent name: %s", agentName)
+    }
+    
+    // Get agent configuration
+    agent := agents.GetAgentConfig(agentName)
+    
+    // Print welcome message
+    fmt.Printf("\n💬 Chat with %s %s\n", agent.Emoji, agent.Name)
+    fmt.Printf("%s\n\n", agent.Description)
+    
+    // Initialize conversation log
+    var conversationLog strings.Builder
+    if starter != "" {
+        conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", starter))
+    }
+    
+    // Try to load existing history for this agent
+    historyPath, err := getHistoryPathForAgent(agentName)
+    var history []Message
+    
+    if err == nil {
+        // Check if history file exists
+        if _, err := os.Stat(historyPath); err == nil {
+            // Read and parse the history file
+            data, err := os.ReadFile(historyPath)
+            if err == nil {
+                var existingHistory []Message
+                if err := json.Unmarshal(data, &existingHistory); err == nil && len(existingHistory) > 0 {
+                    // Successfully loaded history
+                    history = existingHistory
+                }
+            }
+        }
+    }
+    
+    // If no history was loaded, initialize with system message
+    if len(history) == 0 {
+        history = []Message{{
+            Role:    "system",
+            Content: agent.GetFullSystemMessage(false, ""),
+        }}
+    } else {
+        // Prepend system message to existing history
+        history = append([]Message{{
+            Role:    "system",
+            Content: agent.GetFullSystemMessage(false, ""),
+        }}, history...)
+    }
+    
+    // Add starter message if provided
+    currentMessage := starter
+    if currentMessage != "" {
+        history = append(history, Message{
+            Role:    "user",
+            Content: currentMessage,
+        })
+        
+        // Print the starter message
+        fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
+        fmt.Println()  // Single blank line after user message
+    }
+    
+    // Create a reader for user input
+    reader := bufio.NewReader(os.Stdin)
+    
+    // Maximum number of messages to keep in history
+    const maxMessagesInHistory = 50
+    
+    for {
+        // If we have a current message, get agent's response
+        if currentMessage != "" {
+            // Start animation
+            anim := startConversationAnimation(agent)
+            
+            // Add instruction message
+            history = append(history, Message{
+                Role:    "user",
+                Content: "Respond naturally as part of this conversation and do not add prefixes like '<Your name> said:' to your messages.",
+            })
+            
+            // Ensure we don't exceed the token limit
+            if len(history) > maxMessagesInHistory {
+                // Keep the system message and the most recent messages
+                history = append([]Message{history[0]}, history[len(history)-maxMessagesInHistory+1:]...)
+            }
+            
+            // Prepare the request
+            chatReq := ChatRequest{
+                Model:    agents.GetCurrentModel(),
+                Messages: history,
+                Stream:   true,
+            }
+            
+            jsonData, err := json.Marshal(chatReq)
+            if err != nil {
+                anim.stopAnimation()
+                return fmt.Errorf("error marshaling request: %v", err)
+            }
+            
+            // Make the API request with retry
+            resp, err := makeAPIRequestWithRetry(jsonData, agent.Name)
+            if err != nil {
+                anim.stopAnimation()
+                return fmt.Errorf("error making request: %v", err)
+            }
+            
+            // Process the response
+            fullResponseText, err := processStreamResponse(resp, anim)
+            if err != nil {
+                return fmt.Errorf("error processing response: %v", err)
+            }
+            
+            // Update conversation log
+            conversationLog.WriteString(fmt.Sprintf("%s %s: %s\n", 
+                agent.Emoji, 
+                agent.Name, 
+                fullResponseText))
+            
+            // Add the response to history
+            history = append(history, Message{
+                Role:    "assistant",
+                Content: fullResponseText,
+            })
+            
+            // Remove the instruction message
+            if len(history) >= 2 && history[len(history)-2].Role == "user" && 
+               history[len(history)-2].Content == "Respond naturally as part of this conversation and do not add prefixes like '<Your name> said:' to your messages." {
+                // Remove the instruction message
+                history = append(history[:len(history)-2], history[len(history)-1])
+            }
+            
+            fmt.Println()  // Single blank line after response
+        }
+        
+        // Add a blank line before prompting for user input
+        fmt.Println()
+        
+        // Prompt for user input
+        fmt.Print(colorize("👤 User: ", "\033[1;36m"))
+        
+        // Read user input
+        newMessage, err := reader.ReadString('\n')
+        if err != nil {
+            return fmt.Errorf("error reading input: %v", err)
+        }
+        
+        // Trim whitespace
+        currentMessage = strings.TrimSpace(newMessage)
+        
+        // Check for exit
+        if currentMessage == "" {
+            fmt.Println("\nConversation ended.")
+            
+            // Save conversation history for the agent
+            historyPath, err := getHistoryPathForAgent(agentName)
+            if err == nil {
+                // Filter out system messages and special instruction messages before saving
+                var filteredHistory []Message
+                for _, msg := range history {
+                    if msg.Role == "system" || 
+                       (msg.Role == "user" && msg.Content == "Respond naturally as part of this conversation and do not add prefixes like '<Your name> said:' to your messages.") {
+                        continue
+                    }
+                    filteredHistory = append(filteredHistory, msg)
+                }
+                
+                // Save the filtered history
+                data, err := json.MarshalIndent(filteredHistory, "", "    ")
+                if err == nil {
+                    if err := os.WriteFile(historyPath, data, 0644); err != nil {
+                        fmt.Printf("Warning: Failed to save conversation history: %v\n", err)
+                    }
+                }
+            }
+            
+            // Save conversation log to file if requested
+            if saveFile != "" {
+                if err := saveConversationLog(saveFile, conversationLog.String()); err != nil {
+                    fmt.Printf("Warning: Failed to save conversation log: %v\n", err)
+                } else {
+                    fmt.Printf("Conversation log saved to: %s\n", saveFile)
+                }
+            }
+            return nil
+        }
+        
+        // Update conversation log
+        conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", currentMessage))
+        
+        // Add user message to history
+        history = append(history, Message{
+            Role:    "user",
+            Content: currentMessage,
+        })
+        
+        fmt.Println()  // Single blank line after user input
+    }
+}
+
 // Update the main function to handle the new command
 func main() {
     // Set up global signal handler at program start
@@ -1310,6 +1522,7 @@ func main() {
         fmt.Println("  --list                        List available agents")
         fmt.Println("  --select <agent_name>         Select an agent")
         fmt.Println("  --current                     Show current agent")
+        fmt.Println("  --with <agent_name> [--debug] Start a direct chat with a single agent")
         fmt.Println("  --converse <agents...>        Start a conversation between agents")
         fmt.Println("      --starter \"message\"       Initial message to start the conversation")
         fmt.Println("      --starter-file <path>     Read initial message from a text file")
@@ -1325,11 +1538,37 @@ func main() {
         fmt.Println("  --debug                       Show debug information including request JSON")
         fmt.Println("\nOptions for simple chat mode:")
         fmt.Println("  --save <filename>             Save conversation log to a file")
+        fmt.Println("\nNote: The --debug flag can be used with any command to show debug information.")
         return
     }
 
     // Handle special commands
     switch os.Args[1] {
+    case "--with":
+        if len(os.Args) < 3 {
+            fmt.Println("Usage: chatty --with <agent_name> [--debug]")
+            fmt.Println("\nThe --with command can only be used with an agent name and optional --debug flag.")
+            return
+        }
+
+        // Get agent name
+        agentName := os.Args[2]
+        
+        // Check for debug flag after the agent name
+        if len(os.Args) > 3 && os.Args[3] == "--debug" {
+            debugMode = true
+        } else if len(os.Args) > 3 {
+            fmt.Println("Error: Unknown argument after agent name. Only --debug is supported.")
+            fmt.Println("Usage: chatty --with <agent_name> [--debug]")
+            return
+        }
+
+        // Start the single-agent chat with no starter message or save file
+        if err := handleSingleAgentChat(agentName, "", ""); err != nil {
+            fmt.Printf("Error: %v\n", err)
+            return
+        }
+        return
     case "--converse-random":
         if len(os.Args) < 3 {
             fmt.Println("Usage: chatty --converse-random <number_of_agents> [--starter \"message\" | --starter-file <path>] [--turns N] [--auto] [--save <filename>]")
