@@ -168,7 +168,7 @@ var currentAgent = agents.DefaultAgent
 // Get system message using agent name
 func getSystemMessage() string {
     // Single agent chat is never in auto mode
-    return currentAgent.GetFullSystemMessage(false)
+    return currentAgent.GetFullSystemMessage(false, "")
 }
 
 // Format text with color if enabled
@@ -711,7 +711,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         // Initialize with system message and conversation context
         histories[i] = []Message{{
             Role:    "system",
-            Content: agent.GetFullSystemMessage(config.AutoMode),
+            Content: agent.GetFullSystemMessage(config.AutoMode, ""),
         }}
     }
 
@@ -857,16 +857,11 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             histories[i] = []Message{
                 {
                     Role:    "system",
-                    Content: agent.GetFullSystemMessage(config.AutoMode),
+                    Content: agent.GetFullSystemMessage(config.AutoMode, participants.String()),
                 },
                 {
                     Role:    "user",
-                    Content: fmt.Sprintf(templateToUse,
-                        agent.Name,
-                        agent.Emoji,
-                        participants.String(),
-                        recentHistory,
-                        agent.Name),
+                    Content: fmt.Sprintf(templateToUse, recentHistory),
                 },
             }
 

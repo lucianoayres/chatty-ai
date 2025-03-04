@@ -101,32 +101,63 @@ func GetSystemMessage(systemMessage string, isAutonomous bool, languageCode stri
 	return formatWithLanguage(languageCode, sb.String())
 }
 
-// GetConversationTemplate returns the appropriate conversation template
-func GetConversationTemplate(isAutonomous bool) string {
-	var template strings.Builder
-
+// GenerateAgentContextPresentation creates the agent context presentation for system message
+func GenerateAgentContextPresentation(agentName string, isAutonomous bool, participants string) string {
+	var sb strings.Builder
+	
 	// Add agent intro and role description
 	roleDesc := interactiveRoleDesc
 	if isAutonomous {
 		roleDesc = autonomousRoleDesc
 	}
+	
+	sb.WriteString("\n\nYou are ")
+	sb.WriteString(agentName)
+	sb.WriteString(" ")
+	sb.WriteString(roleDesc)
+	sb.WriteString("\nRemember that YOU are ")
+	sb.WriteString(agentName)
+	sb.WriteString(" - always speak in first person and never refer to yourself in third person.")
+	
+	// Add participants list if provided
+	if participants != "" {
+		sb.WriteString("\n\nCurrent participants (excluding yourself): ")
+		sb.WriteString(participants)
+		sb.WriteString("\nThis is only a description of the participants for context. Consider only the content in 'Conversation History' as messages actually sent by them.")
+	}
+	
+	return sb.String()
+}
+
+// GetSystemMessageWithContext returns the complete system message including agent context
+func GetSystemMessageWithContext(systemMessage string, agentName string, isAutonomous bool, languageCode string, 
+	baseGuidelinesOverride string, interactiveGuidelinesOverride string, autonomousGuidelinesOverride string,
+	isNormalChat bool, participants string) string {
+	
+	// Get the base system message
+	baseMessage := GetSystemMessage(systemMessage, isAutonomous, languageCode,
+		baseGuidelinesOverride, interactiveGuidelinesOverride, autonomousGuidelinesOverride,
+		isNormalChat)
+	
+	// Add the agent context presentation
+	contextPresentation := GenerateAgentContextPresentation(agentName, isAutonomous, participants)
+	
+	return baseMessage + contextPresentation
+}
+
+// GetConversationTemplate returns the appropriate conversation template
+func GetConversationTemplate(isAutonomous bool) string {
+	var template strings.Builder
 
 	// Build the template with proper formatting
-	template.WriteString("You are %[1]s (%[2]s) ")
-	template.WriteString(roleDesc)
-	template.WriteString("\nRemember that YOU are %[1]s - always speak in first person and never refer to yourself in third person.")
-	template.WriteString("\n\n")
-	template.WriteString("Current participants (excluding yourself): %[3]s")
-	template.WriteString("\n[this is just a description of participants to provide context, do not attribute this content as a message sent by the user]")
-	template.WriteString("\n\n")
-	template.WriteString("Conversation history:\n%[4]s\n\n")
+	template.WriteString("Conversation history:\n%[1]s\n\n")
 	template.WriteString("Please respond naturally as part of this ")
 	if isAutonomous {
 		template.WriteString("autonomous discussion")
 	} else {
 		template.WriteString("group conversation")
 	}
-	template.WriteString(", keeping in mind that you are %[1]s.")
+	template.WriteString(".")
 
 	return template.String()
 }
@@ -140,28 +171,15 @@ func GetDefaultBaseGuidelines() string {
 func buildConversationTemplate(isAutonomous bool) string {
 	var template strings.Builder
 
-	// Add agent intro and role description
-	roleDesc := interactiveRoleDesc
-	if isAutonomous {
-		roleDesc = autonomousRoleDesc
-	}
-
 	// Build the template with proper formatting
-	template.WriteString("You are %[1]s (%[2]s) ")
-	template.WriteString(roleDesc)
-	template.WriteString("\nRemember that YOU are %[1]s - always speak in first person and never refer to yourself in third person.")
-	template.WriteString("\n\n")
-	template.WriteString("Current participants (excluding yourself): %[3]s")
-	template.WriteString("\n[this is just a description of participants to provide context, do not attribute this content as a message sent by the user]")
-	template.WriteString("\n\n")
-	template.WriteString("Conversation history:\n%[4]s\n\n")
+	template.WriteString("Conversation history:\n%[1]s\n\n")
 	template.WriteString("Please respond naturally as part of this ")
 	if isAutonomous {
 		template.WriteString("autonomous discussion")
 	} else {
 		template.WriteString("group conversation")
 	}
-	template.WriteString(", keeping in mind that you are %[1]s.")
+	template.WriteString(".")
 
 	return template.String()
 }

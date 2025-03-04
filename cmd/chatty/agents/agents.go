@@ -122,12 +122,12 @@ func GetCurrentConfig() (*Config, error) {
 }
 
 // Get complete system message including directives
-func (a *AgentConfig) GetFullSystemMessage(isAuto bool) string {
+func (a *AgentConfig) GetFullSystemMessage(isAuto bool, participants string) string {
 	// Get current config for language code
 	config, err := GetCurrentConfig()
 	if err != nil || config == nil {
 		// If we can't get config, use default language code
-		return GetSystemMessage(a.SystemMessage, isAuto, defaultLanguageCode, "", "", "", false)
+		return GetSystemMessageWithContext(a.SystemMessage, a.Name, isAuto, defaultLanguageCode, "", "", "", false, participants)
 	}
 
 	// Get language code
@@ -158,11 +158,12 @@ func (a *AgentConfig) GetFullSystemMessage(isAuto bool) string {
 	}
 
 	// Use the passed isAuto parameter instead of config.AutoMode
-	return GetSystemMessage(a.SystemMessage, isAuto, languageCode, 
+	return GetSystemMessageWithContext(a.SystemMessage, a.Name, isAuto, languageCode, 
 		config.BaseGuidelines, 
 		config.InteractiveGuidelines, 
 		config.AutonomousGuidelines,
-		isNormalChat)
+		isNormalChat,
+		participants)
 }
 
 // getUserAgentsDir returns the path to user's agents directory
