@@ -96,8 +96,6 @@ func GetCurrentConfig() (*Config, error) {
 				LanguageCode: defaultLanguageCode,
 				Model: defaultModel,
 				BaseGuidelines: baseGuidelines,
-				InteractiveGuidelines: interactiveGuidelines,
-				AutonomousGuidelines: autonomousGuidelines,
 				AutoMode: false,
 			}, nil
 		}
@@ -118,12 +116,6 @@ func GetCurrentConfig() (*Config, error) {
 	}
 	if config.BaseGuidelines == "" {
 		config.BaseGuidelines = baseGuidelines
-	}
-	if config.InteractiveGuidelines == "" {
-		config.InteractiveGuidelines = interactiveGuidelines
-	}
-	if config.AutonomousGuidelines == "" {
-		config.AutonomousGuidelines = autonomousGuidelines
 	}
 
 	return &config, nil
@@ -523,8 +515,6 @@ func CreateDefaultConfig() error {
 		CurrentAgent: defaultAgentName,
 		LanguageCode: defaultLanguageCode,
 		Model:        defaultModel,
-		InteractiveGuidelines: GetDefaultInteractiveGuidelines(),
-		AutonomousGuidelines:  GetDefaultAutonomousGuidelines(),
 		AutoMode: false,
 	}
 
@@ -551,8 +541,6 @@ func UpdateCurrentAgent(name string) error {
 			CurrentAgent: name,
 			LanguageCode: defaultLanguageCode,
 			Model:        defaultModel,
-			InteractiveGuidelines: GetDefaultInteractiveGuidelines(),
-			AutonomousGuidelines:  GetDefaultAutonomousGuidelines(),
 			AutoMode: false,
 		}
 	} else {
@@ -669,8 +657,6 @@ func GetDefaultConfig() Config {
 		LanguageCode: defaultLanguageCode,
 		CommonDirectives: GetDefaultBaseGuidelines(),
 		Model: defaultModel,
-		InteractiveGuidelines: GetDefaultInteractiveGuidelines(),
-		AutonomousGuidelines:  GetDefaultAutonomousGuidelines(),
 		AutoMode: false,
 	}
 } 

@@ -1,0 +1,8 @@
+{
+  "current_agent": "chatty",
+  "language_code": "en-US",
+  "model": "llama3.2",
+  "base_guidelines": "Be professional and formal in your responses. Focus on accuracy and clarity.",
+  "interactive_guidelines": "Always speak in first person and Acknowledge others before adding your view",
+  "autonomous_guidelines": "Always speak in first person and Drive the conversation with questions"
+}

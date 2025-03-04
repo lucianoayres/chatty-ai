@@ -41,6 +41,17 @@ tasks:
       - task install
       - chatty init
 
+  restart-config:
+    desc: Rebuild, reinstall, and initialize chatty with a new config file
+    cmds:
+      - task restart
+      - task setup-config
+
+  setup-config:
+    desc: Setup the config file
+    cmds:
+      - cp config.sample.json ~/.chatty/config.json
+
   run:
     desc: Rebuild, reinstall, and run chatty with a simple message
     cmds:
