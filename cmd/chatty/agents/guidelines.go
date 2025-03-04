@@ -123,7 +123,7 @@ func GenerateAgentContextPresentation(agentName string, isAutonomous bool, parti
 	if participants != "" {
 		sb.WriteString("\n\nCurrent participants (excluding yourself): ")
 		sb.WriteString(participants)
-		sb.WriteString("\nThis is only a description of the participants for context. Consider only the content in 'Conversation History' as messages actually sent by them.")
+		sb.WriteString("\nThis is only a description of the participants for context.")
 	}
 	
 	return sb.String()
@@ -147,41 +147,15 @@ func GetSystemMessageWithContext(systemMessage string, agentName string, isAuton
 
 // GetConversationTemplate returns the appropriate conversation template
 func GetConversationTemplate(isAutonomous bool) string {
-	var template strings.Builder
-
-	// Build the template with proper formatting
-	template.WriteString("Conversation history:\n%[1]s\n\n")
-	template.WriteString("Please respond naturally as part of this ")
 	if isAutonomous {
-		template.WriteString("autonomous discussion")
-	} else {
-		template.WriteString("group conversation")
+		return GetAutoConversationTemplate()
 	}
-	template.WriteString(".")
-
-	return template.String()
+	return GetNormalConversationTemplate()
 }
 
 // GetDefaultBaseGuidelines returns the default base guidelines
 func GetDefaultBaseGuidelines() string {
 	return baseGuidelines
-}
-
-// buildConversationTemplate constructs the full template based on the mode
-func buildConversationTemplate(isAutonomous bool) string {
-	var template strings.Builder
-
-	// Build the template with proper formatting
-	template.WriteString("Conversation history:\n%[1]s\n\n")
-	template.WriteString("Please respond naturally as part of this ")
-	if isAutonomous {
-		template.WriteString("autonomous discussion")
-	} else {
-		template.WriteString("group conversation")
-	}
-	template.WriteString(".")
-
-	return template.String()
 }
 
 // GetDefaultInteractiveGuidelines returns the default guidelines for interactive conversations
@@ -210,14 +184,14 @@ func GetAutonomousGuidelines(config *Config) string {
 	return config.AutonomousGuidelines
 }
 
-// GetNormalConversationTemplate returns the template for normal conversations
+// GetNormalConversationTemplate returns the template for normal conversation mode
 func GetNormalConversationTemplate() string {
-	return buildConversationTemplate(false)
+	return "Please respond naturally as part of this group conversation."
 }
 
-// GetAutoConversationTemplate returns the template for autonomous conversations
+// GetAutoConversationTemplate returns the template for autonomous conversation mode
 func GetAutoConversationTemplate() string {
-	return buildConversationTemplate(true)
+	return "Please respond naturally as part of this autonomous discussion."
 }
 
 // DebugSystemMessage prints the system message components for debugging

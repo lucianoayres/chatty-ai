@@ -59,7 +59,7 @@ type ConversationAnimation struct {
 // Visual formatting constants
 const (
 	// Maximum number of previous messages to include in conversation context
-	maxConversationHistory = 6  // This will include the last 3 exchanges (3 pairs of messages)
+	maxConversationHistory = 200  // Increased to keep more context
 
 	// Visual formatting for turns
 	turnEmoji = "💭"  // Changed to speech bubble for conversation
@@ -576,14 +576,18 @@ func makeAPIRequest(jsonData []byte) (*http.Response, error) {
 
 // Add this helper function to get recent conversation history
 func getRecentConversationHistory(fullHistory string) string {
+    const maxConversationHistory = 200 // Increased to keep more context
+    
+    // Split the full history into lines
     lines := strings.Split(fullHistory, "\n")
-    if len(lines) <= maxConversationHistory {
-        return fullHistory
+    
+    // If we have more lines than the max, only keep the most recent ones
+    if len(lines) > maxConversationHistory {
+        lines = lines[len(lines)-maxConversationHistory:]
     }
     
-    // Keep only the most recent messages
-    recentLines := lines[len(lines)-maxConversationHistory:]
-    return strings.Join(recentLines, "\n")
+    // Join the lines back together
+    return strings.Join(lines, "\n")
 }
 
 // Add this new function to format user messages consistently
@@ -660,6 +664,7 @@ func formatElapsedTime(start, current time.Time) string {
 
 // Update the handleMultiAgentConversation function to format participants list without newlines
 func handleMultiAgentConversation(config ConversationConfig) error {
+    // Validate configuration
     if len(config.Agents) < 2 {
         return fmt.Errorf("at least two agents are required for a conversation")
     }
@@ -682,18 +687,36 @@ func handleMultiAgentConversation(config ConversationConfig) error {
     }
 
     // Validate all agents exist
-    agentConfigs := make([]agents.AgentConfig, len(config.Agents))
-    for i, name := range config.Agents {
+    for _, name := range config.Agents {
         if !agents.IsValidAgent(name) {
             return fmt.Errorf("invalid agent name: %s", name)
         }
-        agentConfigs[i] = agents.GetAgentConfig(name)
     }
 
-    fmt.Println() // Add top margin
-    fmt.Printf("Starting conversation between %d agents:\n", len(config.Agents))
+    // Load agent configurations
+    agentConfigs := make([]agents.AgentConfig, 0, len(config.Agents))
+    for _, agentName := range config.Agents {
+        agentConfigs = append(agentConfigs, agents.GetAgentConfig(agentName))
+    }
+
+    // Set up colors and emojis for the UI
+    turnSeparatorColor := "\033[1;30m" // Bright black (gray)
+    turnColor := "\033[1;33m"          // Yellow
+    turnNumberColor := "\033[1;36m"    // Cyan
+    timeHeaderColor := "\033[1;32m"    // Green
+    timeValueColor := "\033[1;37m"     // White
+    elapsedTimeColor := "\033[1;35m"   // Magenta
+    inputPromptColor := "\033[1;36m"   // Cyan
+    inputHintColor := "\033[1;30m"     // Gray
+    colorReset := "\033[0m"
+    turnEmoji := "🔄"
+    converseMargin := 1
+
+    // Print welcome message
+    fmt.Println("\n🎭 Multi-agent conversation started")
+    fmt.Println("Participants:")
     for i, agent := range agentConfigs {
-        fmt.Printf("%d. %s %s\n", i+1, agent.Emoji, agent.Name)
+        fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
     }
     fmt.Println() // Single line margin at bottom
 
@@ -715,6 +738,14 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         }}
     }
 
+    // Add the initial user message to all agent histories
+    for i := range histories {
+        histories[i] = append(histories[i], Message{
+            Role:    "user",
+            Content: config.Starter,
+        })
+    }
+
     // Create a reader for user input (only used in non-auto mode)
     var reader *bufio.Reader
     if !config.AutoMode {
@@ -727,8 +758,19 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         lastActive: time.Now(),
     }
 
+    // Maximum number of messages to keep in history per agent
+    const maxMessagesPerAgent = 20
+
     if config.AutoMode {
         fmt.Println("\n🤖 Auto-conversation mode enabled. Press Ctrl+C to stop.")
+    }
+
+    // Create a shared conversation history that will be used to build each agent's history
+    sharedHistory := []Message{
+        {
+            Role:    "user",
+            Content: config.Starter,
+        },
     }
 
     for {
@@ -786,20 +828,40 @@ func handleMultiAgentConversation(config ConversationConfig) error {
         // Print bottom separator
         fmt.Printf("%s%s%s\n", turnSeparatorColor, strings.Repeat("─", 60), colorReset)
 
-        // Print the user's message at the start of each turn
-        if firstMessage {
-            fmt.Println()  // Single blank line after separator
-            fmt.Println(colorize(formatUserMessage(config.Starter), "\033[1;36m"))
-            firstMessage = false
-            fmt.Println()  // Single blank line after user message
-        } else if !config.AutoMode {
-            fmt.Println()  // Single blank line after separator
+        // In auto mode, print the user's message
+        if !config.AutoMode {
             fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
             fmt.Println()  // Single blank line after user message
         } else {
             fmt.Println()  // Single blank line after separator for auto mode
         }
 
+        // Update conversation log with user message first (except for the first turn)
+        if firstMessage {
+            // First message is already in the log from initialization
+            firstMessage = false
+            
+            // Print the first message in auto mode
+            if config.AutoMode {
+                fmt.Println(colorize(formatUserMessage(currentMessage), "\033[1;36m"))
+                fmt.Println()  // Single blank line after user message
+            }
+        } else {
+            // For non-auto mode, add the user's new message to the conversation log and shared history
+            if !config.AutoMode {
+                // Add user message to conversation log
+                conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", currentMessage))
+                
+                // Add the user message to the shared history
+                sharedHistory = append(sharedHistory, Message{
+                    Role:    "user",
+                    Content: currentMessage,
+                })
+            }
+            // For auto mode, we don't add a new user message after the first turn
+        }
+
+        // Process each agent's response in this turn
         for i, agent := range agentConfigs {
             // Check for stop signal before each agent's response
             select {
@@ -842,33 +904,51 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                     len(agentConfigs)))
             }
 
-            // Get recent conversation history
-            recentHistory := getRecentConversationHistory(conversationLog.String())
-
-            // Get template based on conversation mode
-            var templateToUse string
-            if config.AutoMode {
-                templateToUse = agents.GetAutoConversationTemplate()
-            } else {
-                templateToUse = agents.GetNormalConversationTemplate()
+            // Update the system message with the participants list
+            histories[i][0] = Message{
+                Role:    "system",
+                Content: agent.GetFullSystemMessage(config.AutoMode, participants.String()),
             }
 
-            // Reset this agent's history to keep context minimal
-            histories[i] = []Message{
-                {
-                    Role:    "system",
-                    Content: agent.GetFullSystemMessage(config.AutoMode, participants.String()),
-                },
-                {
+            // Build this agent's history from the shared history
+            agentHistory := []Message{histories[i][0]} // Start with the system message
+            
+            // Add all messages from the shared history
+            for _, msg := range sharedHistory {
+                agentHistory = append(agentHistory, msg)
+            }
+            
+            // Add a final user message instructing the agent to respond naturally
+            // Check if the last message is already an instruction
+            lastMsgIndex := len(agentHistory) - 1
+            
+            // Always add an instruction message to ensure consistent behavior
+            if lastMsgIndex >= 0 && agentHistory[lastMsgIndex].Role == "user" && 
+               (agentHistory[lastMsgIndex].Content == "Please respond naturally as part of this conversation." ||
+                agentHistory[lastMsgIndex].Content == "Respond naturally as part of this conversation and do not add prefixes like '/<Your name/> said:' to your messages.") {
+                // Replace the last message with our instruction
+                agentHistory[lastMsgIndex] = Message{
                     Role:    "user",
-                    Content: fmt.Sprintf(templateToUse, recentHistory),
-                },
+                    Content: "Respond naturally as part of this conversation and do not add prefixes like '/<Your name/> said:' to your messages.",
+                }
+            } else {
+                // Add a new instruction message
+                agentHistory = append(agentHistory, Message{
+                    Role:    "user",
+                    Content: "Respond naturally as part of this conversation and do not add prefixes like '</Your name/> said:' to your messages.",
+                })
+            }
+
+            // Ensure we don't exceed the token limit
+            if len(agentHistory) > maxMessagesPerAgent {
+                // Keep the system message and the most recent messages
+                agentHistory = append([]Message{agentHistory[0]}, agentHistory[len(agentHistory)-maxMessagesPerAgent+1:]...)
             }
 
             // Prepare the request with full conversation history
             chatReq := ChatRequest{
                 Model:    agents.GetCurrentModel(),
-                Messages: histories[i],
+                Messages: agentHistory,
                 Stream:   true,
             }
 
@@ -901,20 +981,22 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 return fmt.Errorf("error processing response from %s: %v", agent.Name, err)
             }
 
-            // Add the agent's response to their history
-            histories[i] = append(histories[i], Message{
-                Role:    "agent",
-                Content: fullResponseText,
-            })
-
             // Update conversation log
             conversationLog.WriteString(fmt.Sprintf("%s %s: %s\n", 
                 agent.Emoji, 
                 agent.Name, 
                 fullResponseText))
 
-            // Update for next iteration
-            currentMessage = fullResponseText
+            // Add the agent's response to the shared history
+            sharedHistory = append(sharedHistory, Message{
+                Role:    "assistant",
+                Content: fmt.Sprintf("%s said: %s", agent.Name, fullResponseText),
+            })
+
+            // In auto mode, the last agent's response becomes the prompt for the next turn
+            if config.AutoMode && i == len(agentConfigs)-1 {
+                currentMessage = fullResponseText
+            }
 
             // Print margins
             for i := 0; i < converseMargin; i++ {
@@ -951,12 +1033,13 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 fmt.Printf("%sType your message:%s\n", inputPromptColor, colorReset)
                 fmt.Printf("%s[Press Enter with empty message to end the conversation]%s\n", inputHintColor, colorReset)
                 fmt.Print(colorize("👤 User: ", "\033[1;36m"))
-
+                
+                // Read user input
                 newMessage, err := reader.ReadString('\n')
                 if err != nil {
                     return fmt.Errorf("error reading input: %v", err)
                 }
-
+                
                 // Trim whitespace and update current message
                 currentMessage = strings.TrimSpace(newMessage)
                 if currentMessage == "" {
@@ -974,8 +1057,10 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                     return nil
                 }
 
-                // Update conversation log with user's message
-                conversationLog.WriteString(fmt.Sprintf("👤 User: %s\n", currentMessage))
+                // Print margins
+                for i := 0; i < converseMargin; i++ {
+                    fmt.Println()
+                }
 
                 currentTurn++
             }
@@ -1598,10 +1683,27 @@ func main() {
         Content: userInput,
     })
 
+    // Convert existing history to use proper roles for the request
+    var newHistory []Message
+    
+    // Always start with the system message
+    for i, msg := range history {
+        if i == 0 && msg.Role == "system" {
+            // Keep the system message as is
+            newHistory = append(newHistory, msg)
+        } else if msg.Role == "user" {
+            // Keep user messages as is
+            newHistory = append(newHistory, msg)
+        } else if msg.Role == "assistant" {
+            // Keep assistant messages as is
+            newHistory = append(newHistory, msg)
+        }
+    }
+    
     // Prepare the request
     chatReq := ChatRequest{
         Model:    agents.GetCurrentModel(),
-        Messages: history,
+        Messages: newHistory,
         Stream:   true,
     }
 
@@ -1644,11 +1746,16 @@ func main() {
     // Print bottom margin
     printChatMargin(chatBottomMargin)
 
-    // Add agent's response to history
+    // Save the response to history
     history = append(history, Message{
-        Role:    "agent",
+        Role:    "assistant",
         Content: fullResponseText,
     })
+
+    // Save updated history
+    if err := saveHistory(history); err != nil {
+        fmt.Printf("\nWarning: Failed to save chat history: %v\n", err)
+    }
 
     // Save conversation log if requested
     if saveFile != "" {
@@ -1664,10 +1771,5 @@ func main() {
         } else {
             fmt.Printf("Conversation log saved to: %s\n", saveFile)
         }
-    }
-
-    // Save updated history
-    if err := saveHistory(history); err != nil {
-        fmt.Printf("Error saving history: %v\n", err)
     }
 } 
