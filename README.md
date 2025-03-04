@@ -17,7 +17,7 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 
 ## Screenshot
 
-![Chatty Screenshot](images/chatty_ai_screenshot_02.png)
+![Chatty Screenshot](images/chatty_ai_screenshot_01.png)
 
 ## 🔧 Prerequisites
 
