@@ -1250,7 +1250,10 @@ func handleSingleAgentChat(agentName string, starter string, saveFile string) er
     
     // Print welcome message
     fmt.Printf("\n💬 Chat with %s %s\n", agent.Emoji, agent.Name)
-    fmt.Printf("%s\n\n", agent.Description)
+    fmt.Printf("%s\n", agent.Description)
+    
+    // Show exit message at the beginning of the chat
+    fmt.Printf("\nPress Enter with empty message to end the conversation\n\n")
     
     // Initialize conversation log
     var conversationLog strings.Builder
