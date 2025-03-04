@@ -1,4 +1,4 @@
-# 💬 Chatty Ai · Your Terminal Time Machine
+# 💬 Chatty AI · Your Terminal Time Machine
 
 ![Chat AI Banner](images/chatty_ai_banner.png)
 
@@ -422,5 +422,5 @@ Found a bug? Have a cool idea? We'd love your help!
 
 ## 📄 License
 
-MIT License - Feel free to use, modify, and share!
-Copyright (c) 2024 [Your Name/Organization]
+GNU General Public License v3.0 - See [LICENSE](LICENSE) file for details.
+Copyright (c) 2025 Chatty AI
