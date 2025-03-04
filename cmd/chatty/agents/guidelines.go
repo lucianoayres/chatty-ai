@@ -31,9 +31,8 @@ const (
 14. Acknowledge what other agents have said before adding your perspective`
 
 	// Instructions for interpreting conversation history
-	conversationHistoryInstructions = `- In the conversation history, messages sent by a participant are indicated by the "Emoji + Name:" pattern.  
-- If a message contains just the name of another participant, it should not be interpreted as a message from that participant, 
-but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name:" pattern assigned to that block of the conversation history.`
+	conversationHistoryInstructions = `- Each message block in the conversation history is prefaced with an "Emoji + Name:" header that identifies the speaker.  
+- Whenever a participant's message includes the name of another participant, even if it's just a mention, the name should be treated as a reference, not as an indication that the other participant is speaking.`
 )
 
 // Template components for better organization
@@ -52,22 +51,35 @@ func formatWithLanguage(languageCode string, guidelines string) string {
 }
 
 // GetSystemMessage returns the complete system message with appropriate guidelines
-func GetSystemMessage(systemMessage string, isAutonomous bool, languageCode string) string {
+func GetSystemMessage(systemMessage string, isAutonomous bool, languageCode string, 
+	baseGuidelinesOverride string, interactiveGuidelinesOverride string, autonomousGuidelinesOverride string) string {
 	var sb strings.Builder
 
 	// 1. Add the agent's system message
 	sb.WriteString(systemMessage)
 	sb.WriteString("\n\n")
 
-	// 2. Add base guidelines
-	sb.WriteString(baseGuidelines)
+	// 2. Add base guidelines (use override if available)
+	if baseGuidelinesOverride != "" {
+		sb.WriteString(baseGuidelinesOverride)
+	} else {
+		sb.WriteString(baseGuidelines)
+	}
 	sb.WriteString("\n\n")
 
-	// 3. Add mode-specific guidelines
+	// 3. Add mode-specific guidelines (use override if available)
 	if isAutonomous {
-		sb.WriteString(autonomousGuidelines)
+		if autonomousGuidelinesOverride != "" {
+			sb.WriteString(autonomousGuidelinesOverride)
+		} else {
+			sb.WriteString(autonomousGuidelines)
+		}
 	} else {
-		sb.WriteString(interactiveGuidelines)
+		if interactiveGuidelinesOverride != "" {
+			sb.WriteString(interactiveGuidelinesOverride)
+		} else {
+			sb.WriteString(interactiveGuidelines)
+		}
 	}
 
 	// 4. Add conversation history instructions
