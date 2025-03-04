@@ -56,32 +56,6 @@ type ConversationAnimation struct {
     agent agents.AgentConfig
 }
 
-// Visual formatting constants
-const (
-	// Maximum number of previous messages to include in conversation context
-	maxConversationHistory = 200  // Increased to keep more context
-
-	// Visual formatting for turns
-	turnEmoji = "💭"  // Changed to speech bubble for conversation
-	turnColor = "\033[1;35m" // Bright magenta
-	turnNumberColor = "\033[1;36m" // Bright cyan
-	turnSeparator = "•" // Bullet point separator
-	turnSeparatorColor = "\033[38;5;240m" // Dark gray
-
-	// Visual formatting for time
-	timeIndicatorColor = "\033[38;5;246m" // Medium gray
-	timeEmojiColor = "\033[38;5;220m" // Yellow for time emoji
-	timeEmoji = "⏱️"
-	timeHeaderColor = "\033[38;5;75m"  // Light blue for headers
-	timeValueColor = "\033[38;5;252m"  // Light gray for values
-	startTimeEmoji = "🗓️"  // Calendar emoji
-
-	// Visual formatting for input
-	inputPromptColor = "\033[1;37m" // Bright white
-	inputHintColor = "\033[2;37m" // Dim gray
-	elapsedTimeColor = "\033[38;5;246m" // Gray
-) 
-
 const (
     // Core configuration
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
@@ -574,22 +548,6 @@ func makeAPIRequest(jsonData []byte) (*http.Response, error) {
     return resp, nil
 }
 
-// Add this helper function to get recent conversation history
-func getRecentConversationHistory(fullHistory string) string {
-    const maxConversationHistory = 200 // Increased to keep more context
-    
-    // Split the full history into lines
-    lines := strings.Split(fullHistory, "\n")
-    
-    // If we have more lines than the max, only keep the most recent ones
-    if len(lines) > maxConversationHistory {
-        lines = lines[len(lines)-maxConversationHistory:]
-    }
-    
-    // Join the lines back together
-    return strings.Join(lines, "\n")
-}
-
 // Add this new function to format user messages consistently
 func formatUserMessage(message string) string {
     return fmt.Sprintf("👤 User: %s", message)
@@ -914,9 +872,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             agentHistory := []Message{histories[i][0]} // Start with the system message
             
             // Add all messages from the shared history
-            for _, msg := range sharedHistory {
-                agentHistory = append(agentHistory, msg)
-            }
+            agentHistory = append(agentHistory, sharedHistory...)
             
             // Add a final user message instructing the agent to respond naturally
             // Check if the last message is already an instruction

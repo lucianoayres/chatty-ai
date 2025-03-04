@@ -12,13 +12,12 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 - 🗣️ **Multi-Agent Conversations**: Create unique discussions between up to 15 different characters
 - 🎲 **Random Conversations**: Let fate decide your conversation partners for unexpected and exciting discussions
 - 🤖 **Autonomous Mode**: Watch as historical figures and experts discuss topics on their own
-- 🌈 **Beautiful Terminal UI**: Real-time streaming responses with custom colors and animations
-- 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
 - 📝 **Persistent Memory**: Each agent remembers your conversations
+- 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
 
 ## Screenshot
 
-![Chatty Screenshot](images/chatty_ai_screenshot_01.png)
+![Chatty Screenshot](images/chatty_ai_screenshot_02.png)
 
 ## 🔧 Prerequisites
 
@@ -89,6 +88,8 @@ chatty --converse Marx,Tesla,"Sherlock Holmes" --starter "Pitch a revolutionary 
 ```
 
 ## Available Agents
+
+![Chatty Banner](images/chatty_ai_small_banner_01.png)
 
 ### 💻 Built-in Agents
 
@@ -244,10 +245,6 @@ You can provide the starter message in two ways:
    - You press Ctrl+C
    - In normal mode: you enter an empty message
    - In auto mode: you press Ctrl+C to stop
-
-### Conversation Display
-
-![Chatty Screenshot](images/chatty_ai_screenshot_02.png)
 
 ## ⚙️ Configuration
 
