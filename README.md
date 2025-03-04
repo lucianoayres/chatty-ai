@@ -72,7 +72,7 @@ chatty "Can you explain the quantum mechanics behind TikTok viral videos, or is 
 chatty --converse "Shakespeare,Jane Austen,Gandalf" --starter "Let's play Two Truths and a Lie!"
 
 # Create the movie plot of your dreams
-chatty --converse "Cleopatra,Asimov,Beethoven" --starter "Encene a movie called Cybor Hamsters: Escape from the Moon" --auto
+chatty --converse "Cleopatra,Asimov,Beethoven" --starter "Encene a movie called Cyborg Hamsters: Escape from the Moon" --auto
 
 # Let fate decide your conversation partners
 chatty --converse-random 4 --starter "Let's have a completely unexpected discussion!" --auto
