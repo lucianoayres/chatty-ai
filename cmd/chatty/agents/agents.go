@@ -127,7 +127,7 @@ func (a *AgentConfig) GetFullSystemMessage(isAuto bool) string {
 	config, err := GetCurrentConfig()
 	if err != nil || config == nil {
 		// If we can't get config, use default language code
-		return GetSystemMessage(a.SystemMessage, isAuto, defaultLanguageCode, "", "", "")
+		return GetSystemMessage(a.SystemMessage, isAuto, defaultLanguageCode, "", "", "", false)
 	}
 
 	// Get language code
@@ -136,11 +136,33 @@ func (a *AgentConfig) GetFullSystemMessage(isAuto bool) string {
 		languageCode = defaultLanguageCode
 	}
 
+	// Check if this is a normal chat mode (not converse mode)
+	isNormalChat := false
+	
+	// Check if this is called from getSystemMessage() in main.go
+	// We can use the call stack to determine this
+	pc := make([]uintptr, 10)
+	n := runtime.Callers(2, pc)
+	frames := runtime.CallersFrames(pc[:n])
+	
+	for {
+		frame, more := frames.Next()
+		if strings.Contains(frame.Function, "main.getSystemMessage") {
+			// This is called from getSystemMessage in main.go, so it's normal chat
+			isNormalChat = true
+			break
+		}
+		if !more {
+			break
+		}
+	}
+
 	// Use the passed isAuto parameter instead of config.AutoMode
 	return GetSystemMessage(a.SystemMessage, isAuto, languageCode, 
 		config.BaseGuidelines, 
 		config.InteractiveGuidelines, 
-		config.AutonomousGuidelines)
+		config.AutonomousGuidelines,
+		isNormalChat)
 }
 
 // getUserAgentsDir returns the path to user's agents directory

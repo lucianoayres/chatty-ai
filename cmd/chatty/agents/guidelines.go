@@ -2,6 +2,7 @@ package agents
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -52,7 +53,16 @@ func formatWithLanguage(languageCode string, guidelines string) string {
 
 // GetSystemMessage returns the complete system message with appropriate guidelines
 func GetSystemMessage(systemMessage string, isAutonomous bool, languageCode string, 
-	baseGuidelinesOverride string, interactiveGuidelinesOverride string, autonomousGuidelinesOverride string) string {
+	baseGuidelinesOverride string, interactiveGuidelinesOverride string, autonomousGuidelinesOverride string,
+	isNormalChat bool) string {
+	
+	// Check for debug mode
+	if os.Getenv("CHATTY_DEBUG") == "1" {
+		return DebugSystemMessage(systemMessage, isAutonomous, languageCode,
+			baseGuidelinesOverride, interactiveGuidelinesOverride, autonomousGuidelinesOverride,
+			isNormalChat)
+	}
+	
 	var sb strings.Builder
 
 	// 1. Add the agent's system message
@@ -65,20 +75,22 @@ func GetSystemMessage(systemMessage string, isAutonomous bool, languageCode stri
 	} else {
 		sb.WriteString(baseGuidelines)
 	}
-	sb.WriteString("\n\n")
 
-	// 3. Add mode-specific guidelines (use override if available)
-	if isAutonomous {
-		if autonomousGuidelinesOverride != "" {
-			sb.WriteString(autonomousGuidelinesOverride)
+	// 3. Add mode-specific guidelines only if not in normal chat mode
+	if !isNormalChat {
+		sb.WriteString("\n\n")
+		if isAutonomous {
+			if autonomousGuidelinesOverride != "" {
+				sb.WriteString(autonomousGuidelinesOverride)
+			} else {
+				sb.WriteString(autonomousGuidelines)
+			}
 		} else {
-			sb.WriteString(autonomousGuidelines)
-		}
-	} else {
-		if interactiveGuidelinesOverride != "" {
-			sb.WriteString(interactiveGuidelinesOverride)
-		} else {
-			sb.WriteString(interactiveGuidelines)
+			if interactiveGuidelinesOverride != "" {
+				sb.WriteString(interactiveGuidelinesOverride)
+			} else {
+				sb.WriteString(interactiveGuidelines)
+			}
 		}
 	}
 
@@ -189,4 +201,63 @@ func GetNormalConversationTemplate() string {
 // GetAutoConversationTemplate returns the template for autonomous conversations
 func GetAutoConversationTemplate() string {
 	return buildConversationTemplate(true)
+}
+
+// DebugSystemMessage prints the system message components for debugging
+func DebugSystemMessage(systemMessage string, isAutonomous bool, languageCode string, 
+	baseGuidelinesOverride string, interactiveGuidelinesOverride string, autonomousGuidelinesOverride string,
+	isNormalChat bool) string {
+	
+	var sb strings.Builder
+	
+	sb.WriteString("DEBUG SYSTEM MESSAGE:\n")
+	sb.WriteString("-------------------\n")
+	sb.WriteString(fmt.Sprintf("isAutonomous: %v\n", isAutonomous))
+	sb.WriteString(fmt.Sprintf("isNormalChat: %v\n", isNormalChat))
+	sb.WriteString(fmt.Sprintf("languageCode: %s\n", languageCode))
+	sb.WriteString("-------------------\n")
+	sb.WriteString("System Message:\n")
+	sb.WriteString(systemMessage)
+	sb.WriteString("\n-------------------\n")
+	sb.WriteString("Base Guidelines:\n")
+	if baseGuidelinesOverride != "" {
+		sb.WriteString("[OVERRIDE] ")
+		sb.WriteString(baseGuidelinesOverride)
+	} else {
+		sb.WriteString("[DEFAULT] ")
+		sb.WriteString(baseGuidelines)
+	}
+	sb.WriteString("\n-------------------\n")
+	
+	if !isNormalChat {
+		if isAutonomous {
+			sb.WriteString("Autonomous Guidelines:\n")
+			if autonomousGuidelinesOverride != "" {
+				sb.WriteString("[OVERRIDE] ")
+				sb.WriteString(autonomousGuidelinesOverride)
+			} else {
+				sb.WriteString("[DEFAULT] ")
+				sb.WriteString(autonomousGuidelines)
+			}
+		} else {
+			sb.WriteString("Interactive Guidelines:\n")
+			if interactiveGuidelinesOverride != "" {
+				sb.WriteString("[OVERRIDE] ")
+				sb.WriteString(interactiveGuidelinesOverride)
+			} else {
+				sb.WriteString("[DEFAULT] ")
+				sb.WriteString(interactiveGuidelines)
+			}
+		}
+		sb.WriteString("\n-------------------\n")
+	} else {
+		sb.WriteString("Mode-specific Guidelines: [SKIPPED - Normal Chat Mode]\n")
+		sb.WriteString("-------------------\n")
+	}
+	
+	sb.WriteString("Conversation History Instructions:\n")
+	sb.WriteString(conversationHistoryInstructions)
+	sb.WriteString("\n-------------------\n")
+	
+	return sb.String()
 } 
