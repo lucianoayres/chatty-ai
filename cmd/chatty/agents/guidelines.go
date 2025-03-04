@@ -19,16 +19,17 @@ const (
 8. Address others by name when responding to them
 9. Keep responses concise and conversational
 10. Stay in character according to your role and expertise
-11. Build upon previous messages and maintain conversation flow`
+11. Build upon previous messages and maintain conversation flow
+`
 
 	// Guidelines specific to interactive mode (with human participation)
 	interactiveGuidelines = `12. Give special attention to the user's messages and always comment on what they say
-13. Feel free to ask questions to other participants
+13. Feel free to ask questions to the next participant in the conversation
 14. Acknowledge what others have said before adding your perspective`
 
 	// Guidelines specific to autonomous mode (agents only)
 	autonomousGuidelines = `12. DO NOT address or refer to the user - this is an autonomous discussion
-13. Drive the conversation forward with questions and insights for other agents
+13. Drive the conversation forward with questions and insights for the next agent in the conversation
 14. Acknowledge what other agents have said before adding your perspective`
 
 	// Instructions for interpreting conversation history

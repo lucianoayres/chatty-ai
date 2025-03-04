@@ -658,9 +658,9 @@ func handleMultiAgentConversation(config ConversationConfig) error {
     }
 
     // Set up colors and emojis for the UI
-    turnSeparatorColor := "\033[1;30m" // Bright black (gray)
-    turnColor := "\033[1;33m"          // Yellow
-    turnNumberColor := "\033[1;36m"    // Cyan
+    turnSeparatorColor := "\033[1;36m" // Black
+    turnColor := "\033[1;36m"          // Yellow
+    turnNumberColor := "\033[1;37m"    // Cyan
     timeHeaderColor := "\033[1;32m"    // Green
     timeValueColor := "\033[1;37m"     // White
     elapsedTimeColor := "\033[1;35m"   // Magenta
