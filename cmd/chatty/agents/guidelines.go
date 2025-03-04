@@ -31,9 +31,9 @@ const (
 14. Acknowledge what other agents have said before adding your perspective`
 
 	// Instructions for interpreting conversation history
-	conversationHistoryInstructions = `- In the conversation history, messages sent by a participant are indicated by the "Emoji + Name" pattern.  
-- If a message contains another participant's name, it should not be interpreted as a message from that participant, 
-but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name" pattern assigned to that block of the conversation history.`
+	conversationHistoryInstructions = `- In the conversation history, messages sent by a participant are indicated by the "Emoji + Name:" pattern.  
+- If a message contains just the name of another participan, it should not be interpreted as a message from that participant, 
+but rather as a reference to them mentioned by the participant indicated in the "Emoji + Name:" pattern assigned to that block of the conversation history.`
 )
 
 // Template components for better organization
