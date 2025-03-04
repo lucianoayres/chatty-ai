@@ -114,13 +114,6 @@ const (
     // Animation configuration
     frameDelay   = 200          // Milliseconds between animation frames
 
-    // Conversation mode timeouts (much higher due to multiple agents and longer responses)
-    converseRequestTimeout = 300 * time.Second  // Initial connection timeout for converse mode
-    converseReadTimeout = 300 * time.Second    // Timeout for reading each chunk in converse mode
-    converseWriteTimeout = 300 * time.Second    // Timeout for writing requests in converse mode
-
-    // Add this new constant for normal conversation guidelines
-    defaultInteractiveGuidelines = `1. Always speak in first person (use "I", "my", "me") - never refer to yourself in third person 2. Address others by name when responding to them 3. Keep responses concise and conversational 4. Stay in character according to your role and expertise 5. Build upon previous messages and maintain conversation flow 6. Feel free to ask questions to other participants 7. Acknowledge what others have said before adding your perspective`
 )
 
 // Animation control
@@ -396,9 +389,6 @@ func getOllamaAPI() string {
     return ollamaBaseURL + ollamaURLPath
 }
 
-// HTTP client without timeout (we'll use context for initial timeout)
-var httpClient = &http.Client{}
-
 // Update the animation functions for conversation mode
 func startConversationAnimation(agent agents.AgentConfig) *ConversationAnimation {
     anim := &ConversationAnimation{
@@ -445,9 +435,9 @@ func checkOllamaReady() error {
     resp, err := client.Get(ollamaBaseURL + "/api/tags")
     if err != nil {
         if os.IsTimeout(err) || strings.Contains(err.Error(), "connection refused") {
-            return fmt.Errorf("Ollama is not ready. Please ensure 'ollama serve' is running and the service is fully initialized")
+            return fmt.Errorf("ollama is not ready. please ensure 'ollama serve' is running and the service is fully initialized")
         }
-        return fmt.Errorf("Error checking Ollama: %v", err)
+        return fmt.Errorf("error checking ollama: %v", err)
     }
     defer resp.Body.Close()
     return nil
@@ -460,7 +450,7 @@ var (
 )
 
 // Update the makeAPIRequestWithRetry function
-func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, isConversation bool) (*http.Response, error) {
+func makeAPIRequestWithRetry(jsonData []byte, agent string) (*http.Response, error) {
     // First, check if Ollama is ready
     if err := checkOllamaReady(); err != nil {
         return nil, err
@@ -475,7 +465,7 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
             fmt.Printf("\nRetrying request for %s (attempt %d/%d)...\n", agent, attempt, maxRetries)
         }
 
-        resp, err := makeAPIRequest(jsonData, history, isConversation)
+        resp, err := makeAPIRequest(jsonData)
         if err == nil {
             return resp, nil
         }
@@ -509,7 +499,7 @@ func makeAPIRequestWithRetry(jsonData []byte, history []Message, agent string, i
 }
 
 // Update the makeAPIRequest function
-func makeAPIRequest(jsonData []byte, history []Message, isConversation bool) (*http.Response, error) {
+func makeAPIRequest(jsonData []byte) (*http.Response, error) {
     // Print request JSON in debug mode
     if debugMode {
         // Pretty print the JSON with indentation
@@ -894,14 +884,14 @@ func handleMultiAgentConversation(config ConversationConfig) error {
             }
 
             // Make the API request with retry
-            resp, err := makeAPIRequestWithRetry(jsonData, histories[i], agent.Name, true)
+            resp, err := makeAPIRequestWithRetry(jsonData, agent.Name)
             if err != nil {
                 anim.stopAnimation()
                 return fmt.Errorf("error making request for %s: %v", agent.Name, err)
             }
 
             // Process the response
-            fullResponseText, err := processStreamResponse(resp, anim, true)
+            fullResponseText, err := processStreamResponse(resp, anim)
             if err != nil {
                 // Check if this was due to a stop signal
                 if config.AutoMode {
@@ -999,7 +989,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
 }
 
 // Update the processStreamResponse function to use the conversation animation
-func processStreamResponse(resp *http.Response, anim interface{}, isConversation bool) (string, error) {
+func processStreamResponse(resp *http.Response, anim any) (string, error) {
     var fullResponse strings.Builder
     var firstChunk bool = true
     
@@ -1150,36 +1140,6 @@ func initializeChatty() error {
         "\033[1;32m", colorReset)
     
     return nil
-}
-
-// Add this new function before handleMultiAgentConversation
-func makeAgentRequest(agent agents.AgentConfig, message string) (*http.Response, error) {
-    // Initialize history with just the system message for this conversation
-    history := []Message{{
-        Role:    "system",
-        Content: agent.GetFullSystemMessage(false), // Single agent requests are never in auto mode
-    }}
-
-    // Add the current message
-    history = append(history, Message{
-        Role:    "user",
-        Content: message,
-    })
-
-    // Prepare the request
-    chatReq := ChatRequest{
-        Model:    agents.GetCurrentModel(),
-        Messages: history,
-        Stream:   true,
-    }
-
-    jsonData, err := json.Marshal(chatReq)
-    if err != nil {
-        return nil, fmt.Errorf("error marshaling request: %v", err)
-    }
-
-    // Make the API request
-    return makeAPIRequest(jsonData, history, false)
 }
 
 // Add this new function after the makeAgentRequest function
@@ -1664,7 +1624,7 @@ func main() {
     anim := startAnimation()
 
     // Make the API request with timeout (passing false for regular chat)
-    resp, err := makeAPIRequest(jsonData, history, false)
+    resp, err := makeAPIRequest(jsonData)
     if err != nil {
         anim.stopAnimation() // Stop animation on error
         fmt.Printf("\nError: %v\n", err)
@@ -1677,7 +1637,7 @@ func main() {
     defer resp.Body.Close()
 
     // Process the streaming response (passing false for regular chat)
-    fullResponseText, err := processStreamResponse(resp, anim, false)
+    fullResponseText, err := processStreamResponse(resp, anim)
     if err != nil {
         fmt.Printf("\nError: %v\n", err)
         return
