@@ -2,7 +2,7 @@
 
 ![Chat AI Banner](images/chatty_ai_banner.png)
 
-## Chat with Historical Figures, Scientists, and Experts
+## Chat with Historical Figures, Scientists, Experts and more
 
 Transform your terminal into a vibrant AI-powered workspace where historical figures, scientists, philosophers, and experts come alive! Chatty isn't just another CLI tool - it's your gateway to engaging conversations with some of history's most fascinating minds.
 
