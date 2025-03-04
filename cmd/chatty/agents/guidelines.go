@@ -32,8 +32,7 @@ const (
 14. Acknowledge what other agents have said before adding your perspective`
 
 	// Instructions for interpreting conversation history
-	conversationHistoryInstructions = `- Each message block in the conversation history is prefaced with an "Emoji + Name:" header that identifies the speaker.  
-- Whenever a participant's message includes the name of another participant, even if it's just a mention, the name should be treated as a reference, not as an indication that the other participant is speaking.`
+	conversationHistoryInstructions = `- Pay close attention to the Conversation History to distinguish when a message was sent by a specific user and when someone is merely referencing or addressing another user.`
 )
 
 // Template components for better organization
