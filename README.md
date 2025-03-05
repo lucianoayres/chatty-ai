@@ -108,8 +108,11 @@ Want even more fascinating conversations? Discover our collection of over [50 ad
 To start using these personalities:
 
 ```bash
-# List all available samples
-ls ~/.chatty/agents/*.sample
+# List all available sample agents
+chatty --more
+
+# View a sample agent's definition before installing
+chatty --view "sagan"
 
 # Pick your favorite and create your own copy
 cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
@@ -163,6 +166,13 @@ Have a one-on-one chat with any agent:
 ```bash
 # List available agents and their specialties
 chatty --list
+
+# List all available sample agents that can be installed
+chatty --more
+
+# View the definition of any agent (built-in, user-defined, or sample)
+chatty --view "Einstein"
+chatty --view "sagan"  # Works for sample agents too
 
 # Choose your conversation partner
 chatty --select "Sherlock Holmes"
