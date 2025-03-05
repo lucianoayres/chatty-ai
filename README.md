@@ -114,7 +114,10 @@ chatty --more
 # View a sample agent's definition before installing
 chatty --view "sagan"
 
-# Pick your favorite and create your own copy
+# Add a sample agent to your collection (quick way)
+chatty --add "sagan"
+
+# Or manually copy the sample file (alternative way)
 cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
 ```
 
@@ -173,6 +176,9 @@ chatty --more
 # View the definition of any agent (built-in, user-defined, or sample)
 chatty --view "Einstein"
 chatty --view "sagan"  # Works for sample agents too
+
+# Add a sample agent to your collection
+chatty --add "sagan"
 
 # Choose your conversation partner
 chatty --select "Sherlock Holmes"

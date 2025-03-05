@@ -2054,24 +2054,91 @@ func main() {
             fmt.Println(string(yamlData))
         }
         os.Exit(0)
+    case "--add":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Missing agent name. Usage: chatty --add <agent_name>")
+            fmt.Println("Use 'chatty --more' to see available sample agents.")
+            os.Exit(1)
+        }
+        
+        agentName := os.Args[2]
+        
+        // Get the user's home directory
+        homeDir, err := os.UserHomeDir()
+        if err != nil {
+            fmt.Printf("Error getting home directory: %v\n", err)
+            os.Exit(1)
+        }
+        
+        // Construct path to the agents directory
+        agentsDir := filepath.Join(homeDir, ".chatty", "agents")
+        
+        // Construct paths to the sample and target agent files
+        sampleAgentPath := filepath.Join(agentsDir, agentName+".yaml.sample")
+        targetAgentPath := filepath.Join(agentsDir, agentName+".yaml")
+        
+        // Check if the sample agent exists
+        if _, err := os.Stat(sampleAgentPath); err != nil {
+            fmt.Printf("Error: Sample agent '%s' not found\n", agentName)
+            fmt.Println("\nUse 'chatty --more' to see available sample agents.")
+            os.Exit(1)
+        }
+        
+        // Check if the target agent already exists
+        if _, err := os.Stat(targetAgentPath); err == nil {
+            fmt.Printf("Error: Agent '%s' already exists\n", agentName)
+            os.Exit(1)
+        }
+        
+        // Read the sample agent file to extract the actual agent name
+        data, err := os.ReadFile(sampleAgentPath)
+        if err != nil {
+            fmt.Printf("Error reading sample agent file: %v\n", err)
+            os.Exit(1)
+        }
+        
+        // Parse the YAML to get the actual agent name
+        var agentConfig struct {
+            Name string `yaml:"name"`
+        }
+        if err := yaml.Unmarshal(data, &agentConfig); err != nil {
+            fmt.Printf("Error parsing sample agent file: %v\n", err)
+            os.Exit(1)
+        }
+        
+        // Use the actual agent name from the YAML
+        actualAgentName := agentConfig.Name
+        
+        // Write the data to the target agent file
+        if err := os.WriteFile(targetAgentPath, data, 0644); err != nil {
+            fmt.Printf("Error creating agent file: %v\n", err)
+            os.Exit(1)
+        }
+        
+        fmt.Printf("\n✅ Agent '%s' has been successfully added!\n", actualAgentName)
+        fmt.Printf("\nYou can now select it with: chatty --select \"%s\"\n", actualAgentName)
+        os.Exit(0)
     case "--select":
         if len(os.Args) < 3 {
-            fmt.Println("Please specify an agent name")
-            return
+            fmt.Println("Error: Missing agent name. Usage: chatty --select <agent_name>")
+            fmt.Println("Use 'chatty --list' to see available agents.")
+            os.Exit(1)
         }
         
-        // Validate agent name before making any changes
-        if !agents.IsValidAgent(os.Args[2]) {
-            fmt.Printf("Error: Invalid agent name '%s'\n", os.Args[2])
+        agentName := os.Args[2]
+        
+        // Validate agent name
+        if !agents.IsValidAgent(agentName) {
+            fmt.Printf("Error: Invalid agent name '%s'\n", agentName)
             fmt.Println("\nAvailable agents:")
             fmt.Print(agents.ListAgents())
-            return
+            os.Exit(1)
         }
         
-        currentAgent = agents.GetAgentConfig(os.Args[2])
-        if err := agents.UpdateCurrentAgent(os.Args[2]); err != nil {
+        currentAgent = agents.GetAgentConfig(agentName)
+        if err := agents.UpdateCurrentAgent(agentName); err != nil {
             fmt.Printf("Error saving agent selection: %v\n", err)
-            return
+            os.Exit(1)
         }
         fmt.Printf("Switched to %s [%s%s%s] %s\n", 
             currentAgent.Emoji,
@@ -2079,7 +2146,7 @@ func main() {
             currentAgent.Name,
             "\u001b[0m", // Reset color
             currentAgent.Description)
-        return
+        os.Exit(0)
     }
 
     // Parse arguments for --save
