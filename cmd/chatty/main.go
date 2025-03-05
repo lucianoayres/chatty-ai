@@ -2228,12 +2228,32 @@ func main() {
             fmt.Printf("%s%s%s\n", colorBlue, agent.SystemMessage, colorReset)
 
             fmt.Printf("\n%s💡 Quick Actions%s\n", colorCyan, colorReset)
-            fmt.Printf("  %s1.%s %sInstall this agent:%s chatty --install %s\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agentName)
-            fmt.Printf("  %s2.%s %sAfter installation:%s chatty --select \"%s\"\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agent.Name)
-            fmt.Printf("  %s3.%s %sStart chatting:%s chatty --with \"%s\"\n\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agent.Name)
+            
+            // Track action number
+            actionNum := 1
+
+            // Show "Set as current agent" only if not active
+            if !isActive {
+                fmt.Printf("  %s%d.%s %sSet as current agent:%s chatty --select \"%s\"\n", 
+                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+                actionNum++
+            }
+
+            // Show chat actions with proper numbering
+            fmt.Printf("  %s%d.%s %sStart a chat:%s chatty --with \"%s\"\n", 
+                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+            actionNum++
+
+            fmt.Printf("  %s%d.%s %sStart group chat:%s chatty --with \"%s,<other_agent>\"\n", 
+                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+            actionNum++
+
+            fmt.Printf("  %s%d.%s %sAuto conversation:%s chatty --with \"%s,<other_agent>\" --auto --topic \"<topic or message>\"\n", 
+                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+            actionNum++
+
+            fmt.Printf("  %s%d.%s %sClear chat history:%s chatty --clear \"%s\"\n\n", 
+                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
         }
         os.Exit(0)
     case "--install":
@@ -2288,9 +2308,6 @@ func main() {
             os.Exit(1)
         }
         
-        // Use the actual agent name from the YAML
-        actualAgentName := agentConfig.Name
-        
         // Write the data to the target agent file
         if err := os.WriteFile(targetAgentPath, data, 0644); err != nil {
             fmt.Printf("Error creating agent file: %v\n", err)
@@ -2302,8 +2319,32 @@ func main() {
             fmt.Printf("Warning: Failed to reload agents after installation: %v\n", err)
         }
         
-        fmt.Printf("\n✅ Agent '%s' has been successfully installed!\n", actualAgentName)
-        fmt.Printf("\nYou can now select it with: chatty --select \"%s\"\n", actualAgentName)
+        // Define color constants for better readability
+        colorCyan := "\033[1;36m"
+        colorGreen := "\033[32m"
+        colorPurple := "\033[1;95m"
+        colorReset := "\033[0m"
+        
+        // Get the installed agent config
+        installedAgent := agents.GetAgentConfig(agentConfig.Name)
+        
+        fmt.Printf("\n%s✨ Agent installed successfully!%s\n", colorCyan, colorReset)
+        fmt.Printf("%s%s [%s%s%s] %s\n", 
+            installedAgent.Emoji,
+            installedAgent.LabelColor,
+            installedAgent.LabelColor,
+            installedAgent.Name,
+            colorReset,
+            installedAgent.Description)
+
+        fmt.Printf("\n%s💡 Quick Actions:%s\n", colorCyan, colorReset)
+        fmt.Printf("  %s1.%s %sSet as current agent:%s chatty --select \"%s\"\n", 
+            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
+        fmt.Printf("  %s2.%s %sStart chatting:%s chatty --with \"%s\"\n", 
+            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
+        fmt.Printf("  %s3.%s %sView agent details:%s chatty --show \"%s\"\n\n", 
+            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
+        
         os.Exit(0)
     case "--select":
         if len(os.Args) < 3 {
