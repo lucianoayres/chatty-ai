@@ -1149,11 +1149,18 @@ func initializeChatty() error {
     // Get default agent info
     defaultAgent := agents.DefaultAgent
 
+    // Define color constants for better readability
+    colorMagenta := "\033[1;35m"
+    colorCyan := "\033[1;36m"
+    colorGreen := "\033[32m"
+    colorPurple := "\033[1;95m"  // Nice purple color for command labels
+    colorBlue := "\033[1;34m"
+
     // Print success message with enhanced formatting
     fmt.Printf("\n%s🎉 Chatty has been successfully initialized!%s\n\n", 
-        "\033[1;32m", colorReset)
+        colorGreen, colorReset)
 
-    fmt.Printf("%s📌 Default Agent:%s\n", "\033[1;36m", colorReset)
+    fmt.Printf("%s📌 Default Agent:%s\n", colorCyan, colorReset)
     fmt.Printf("   %s %s%s%s - %s\n\n",
         defaultAgent.Emoji,
         defaultAgent.LabelColor,
@@ -1161,26 +1168,51 @@ func initializeChatty() error {
         colorReset,
         defaultAgent.Description)
 
-    fmt.Printf("%s🎯 Quick Start Guide:%s\n", "\033[1;35m", colorReset)
-    fmt.Printf("   1. %sStart chatting:%s chatty \"Hello, how can you help me?\"\n",
-        "\033[1;33m", colorReset)
-    fmt.Printf("   2. %sList agents:%s chatty --list\n",
-        "\033[1;33m", colorReset)
-    fmt.Printf("   3. %sSwitch agents:%s chatty --select <name>\n",
-        "\033[1;33m", colorReset)
-    fmt.Printf("   4. %sStart a group chat:%s chatty --converse einstein,assimov,newton --starter \"Let's talk\"\n",
-        "\033[1;33m", colorReset)
+    fmt.Printf("%s🎯 Quick Start Guide%s\n", colorMagenta, colorReset)
+    
+    // Basic Commands Section
+    fmt.Printf("\n   %s💬 Basic Commands:%s\n", colorCyan, colorReset)
+    fmt.Printf("   • %sOne-off message:%s chatty %s\"Your message here\"%s\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sSimple chat mode:%s chatty --with %s<agent_name>%s\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    
+    // Agent Management Section
+    fmt.Printf("\n   %s🧠 Agent Management:%s\n", colorCyan, colorReset)
+    fmt.Printf("   • %sList installed agents:%s chatty --list\n",
+        colorPurple, colorReset)
+    fmt.Printf("   • %sList sample agents:%s chatty --list-more\n",
+        colorPurple, colorReset)
+    fmt.Printf("   • %sView agent details:%s chatty --show %s<agent_name>%s\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sInstall a sample agent:%s chatty --install %s<agent_name>%s\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sSwitch active agent:%s chatty --select %s<agent_name>%s\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    
+    // Advanced Features Section
+    fmt.Printf("\n   %s🌟 Advanced Features:%s\n", colorCyan, colorReset)
+    fmt.Printf("   • %sGroup chat mode:%s chatty --with %s\"Einstein,Ada,Tux\"%s --topic \"Let's talk\"\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sRandom agents chat:%s chatty --with-random %s3%s --topic \"Hello\"\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sAutonomous mode:%s Add %s--auto%s flag to group chats\n",
+        colorPurple, colorReset, colorBlue, colorReset)
+    fmt.Printf("   • %sSave conversations:%s Add %s--save filename.txt%s to any command\n",
+        colorPurple, colorReset, colorBlue, colorReset)
 
-    fmt.Printf("\n%s💡 Pro Tips:%s\n", "\033[1;36m", colorReset)
-    fmt.Printf("   • Use %s--auto%s flag in group chats for autonomous agent discussions\n",
-        "\033[1;33m", colorReset)
-    fmt.Printf("   • Press %sCtrl+C%s to stop auto-conversations gracefully\n",
-        "\033[1;33m", colorReset)
+    fmt.Printf("\n%s💡 Pro Tips:%s\n", colorCyan, colorReset)
     fmt.Printf("   • Use %s--turns N%s to limit conversation length\n",
-        "\033[1;33m", colorReset)
+        colorPurple, colorReset)
+    fmt.Printf("   • Press %sCtrl+C%s to stop auto-conversations gracefully\n",
+        colorPurple, colorReset)
+    fmt.Printf("   • Use %s--topic-file path.txt%s to read topics from a file\n",
+        colorPurple, colorReset)
+    fmt.Printf("   • Clear history with %s--clear all%s or %s--clear \"Agent Name\"%s\n",
+        colorPurple, colorReset, colorPurple, colorReset)
 
     fmt.Printf("\n%s🌟 Ready to start your AI journey!%s\n\n",
-        "\033[1;32m", colorReset)
+        colorGreen, colorReset)
     
     return nil
 }
@@ -1523,7 +1555,7 @@ func main() {
         fmt.Println("  init                          Initialize Chatty environment")
         fmt.Println("  --clear [all|agent_name]      Clear chat history (all or specific agent)")
         fmt.Println("  --list                        List available agents")
-        fmt.Println("  --more                        List sample agents available for installation")
+        fmt.Println("  --list-more                   List sample agents available for installation")
         fmt.Println("  --select <agent_name>         Select an agent")
         fmt.Println("  --current                     Show current agent")
         fmt.Println("  --with <agent_name>           Start a direct chat with a single agent")
@@ -1946,11 +1978,33 @@ func main() {
     case "--list":
         fmt.Print(agents.ListAgents())
         return
-    case "--more":
-        fmt.Println("\n🎭 Sample Agents Available for Installation")
-        fmt.Println("These sample agents can be copied to your agents directory.")
-        fmt.Println("To install a sample agent, use: cp ~/.chatty/agents/AGENT_NAME.yaml.sample ~/.chatty/agents/AGENT_NAME.yaml")
-        fmt.Println()
+    case "--list-more":
+        // Define color constants for better readability
+        colorMagenta := "\033[1;35m"
+        colorCyan := "\033[1;36m"
+        colorGreen := "\033[32m"
+        colorPurple := "\033[1;95m"  // Using purple instead of yellow
+        colorBlue := "\033[1;34m"
+        colorReset := "\033[0m"
+
+        fmt.Printf("\n%s🎭 Sample Agents Available for Installation%s\n", colorMagenta, colorReset)
+        fmt.Printf("%s✨ Expand your collection with these fascinating personalities!%s\n\n", colorCyan, colorReset)
+        
+        fmt.Printf("%s📋 Installation Options:%s\n", colorCyan, colorReset)
+        fmt.Printf("  %s1.%s %sQuick Install:%s chatty --install %s<agent_name>%s\n", 
+            colorGreen, colorReset, colorPurple, colorReset, colorBlue, colorReset)
+        fmt.Printf("     %sExample:%s chatty --install sagan\n", 
+            colorPurple, colorReset)
+        fmt.Printf("\n  %s2.%s %sManual Install:%s cp ~/.chatty/agents/%s<agent_name>%s.yaml.sample ~/.chatty/agents/%s<agent_name>%s.yaml\n", 
+            colorGreen, colorReset, colorPurple, colorReset, colorBlue, colorReset, colorBlue, colorReset)
+        
+        fmt.Printf("\n%s🔍 Helpful Commands:%s\n", colorCyan, colorReset)
+        fmt.Printf("  • %sView agent details:%s chatty --show %s<agent_name>%s\n", 
+            colorPurple, colorReset, colorBlue, colorReset)
+        fmt.Printf("  • %sSelect after install:%s chatty --select %s\"<Agent Name>\"%s\n", 
+            colorPurple, colorReset, colorBlue, colorReset)
+        fmt.Printf("  • %sList installed agents:%s chatty --list\n\n", 
+            colorPurple, colorReset)
 
         // Get the user's home directory
         homeDir, err := os.UserHomeDir()
@@ -1984,24 +2038,31 @@ func main() {
 
         // Print the agent names in columns
         if len(sampleAgents) > 0 {
+            fmt.Printf("%s📚 Available Sample Agents:%s\n", colorCyan, colorReset)
+            
+            // Define some emojis to rotate through for visual interest
+            emojis := []string{"🧠", "🔮", "📚", "🎭", "🎨", "🔬", "🧪", "🎓", "🌟", "💡"}
+            
             for i, agent := range sampleAgents {
-                fmt.Printf("%-20s", agent)
-                if (i+1)%4 == 0 {
+                emojiIndex := i % len(emojis)
+                fmt.Printf("%s %s%-15s%s", emojis[emojiIndex], colorPurple, agent, colorReset)
+                if (i+1)%4 == 0 {  // Changed from 3 to 4 columns
                     fmt.Println()
                 }
             }
             // Add a newline if the last row is incomplete
-            if len(sampleAgents)%4 != 0 {
+            if len(sampleAgents)%4 != 0 {  // Changed from 3 to 4
                 fmt.Println()
             }
-            fmt.Printf("\nTotal sample agents available: %d\n", len(sampleAgents))
+            fmt.Printf("\n%s✅ Total sample agents available: %s%d%s\n\n", 
+                colorGreen, colorPurple, len(sampleAgents), colorReset)
         } else {
-            fmt.Println("No sample agents found.")
+            fmt.Printf("%s❌ No sample agents found.%s\n\n", colorPurple, colorReset)
         }
         os.Exit(0)
-    case "--view":
+    case "--show":
         if len(os.Args) < 3 {
-            fmt.Println("Error: Missing agent name. Usage: chatty --view <agent_name>")
+            fmt.Println("Error: Missing agent name. Usage: chatty --show <agent_name>")
             os.Exit(1)
         }
         
@@ -2054,10 +2115,10 @@ func main() {
             fmt.Println(string(yamlData))
         }
         os.Exit(0)
-    case "--add":
+    case "--install":
         if len(os.Args) < 3 {
-            fmt.Println("Error: Missing agent name. Usage: chatty --add <agent_name>")
-            fmt.Println("Use 'chatty --more' to see available sample agents.")
+            fmt.Println("Error: Missing agent name. Usage: chatty --install <agent_name>")
+            fmt.Println("Use 'chatty --list-more' to see available sample agents.")
             os.Exit(1)
         }
         
@@ -2080,7 +2141,7 @@ func main() {
         // Check if the sample agent exists
         if _, err := os.Stat(sampleAgentPath); err != nil {
             fmt.Printf("Error: Sample agent '%s' not found\n", agentName)
-            fmt.Println("\nUse 'chatty --more' to see available sample agents.")
+            fmt.Println("\nUse 'chatty --list-more' to see available sample agents.")
             os.Exit(1)
         }
         
@@ -2115,7 +2176,7 @@ func main() {
             os.Exit(1)
         }
         
-        fmt.Printf("\n✅ Agent '%s' has been successfully added!\n", actualAgentName)
+        fmt.Printf("\n✅ Agent '%s' has been successfully installed!\n", actualAgentName)
         fmt.Printf("\nYou can now select it with: chatty --select \"%s\"\n", actualAgentName)
         os.Exit(0)
     case "--select":

@@ -109,13 +109,13 @@ To start using these personalities:
 
 ```bash
 # List all available sample agents
-chatty --more
+chatty --list-more
 
 # View a sample agent's definition before installing
-chatty --view "sagan"
+chatty --show "sagan"
 
 # Add a sample agent to your collection (quick way)
-chatty --add "sagan"
+chatty --install "sagan"
 
 # Or manually copy the sample file (alternative way)
 cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
@@ -129,9 +129,9 @@ The possibilities are endless - mix and match personalities to create unique con
 
 ```bash
 # First, set up your desired personality agents
-cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
-cp ~/.chatty/agents/hawking.yaml.sample ~/.chatty/agents/hawking.yaml
-cp ~/.chatty/agents/captain_nemo.yaml.sample ~/.chatty/agents/captain_nemo.yaml
+chatty --install "sagan"
+chatty --install "hawking"
+chatty --install "captain_nemo"
 
 # Then start your discussion
 chatty --with "Carl Sagan,Stephen Hawking,Captain Nemo" --topic "Let's explore the mysteries of space and sea - which frontier is more fascinating?"
@@ -171,14 +171,14 @@ Have a one-on-one chat with any agent:
 chatty --list
 
 # List all available sample agents that can be installed
-chatty --more
+chatty --list-more
 
 # View the definition of any agent (built-in, user-defined, or sample)
-chatty --view "Einstein"
-chatty --view "sagan"  # Works for sample agents too
+chatty --show "Einstein"
+chatty --show "sagan"  # Works for sample agents too
 
 # Add a sample agent to your collection
-chatty --add "sagan"
+chatty --install "sagan"
 
 # Choose your conversation partner
 chatty --select "Sherlock Holmes"
@@ -352,10 +352,10 @@ To change language:
 
    ```bash
    # List available samples
-   ls ~/.chatty/agents/*.sample
+   chatty --list-more
 
    # Create from a sample
-   cp ~/.chatty/agents/focus.yaml.sample ~/.chatty/agents/myagent.yaml
+   chatty --install "focus"
    ```
 
 2. Or create from scratch:
