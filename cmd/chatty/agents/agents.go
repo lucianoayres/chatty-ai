@@ -399,57 +399,82 @@ func ListAgents() string {
 	defer cache.mutex.RUnlock()
 
 	var sb strings.Builder
-	sb.WriteString("\u001b[38;5;240mUse 'chatty --select <agent name>' to activate an agent\u001b[0m\n\n")
-	sb.WriteString("Builtin Agents\n")
-	
-	// Get current active agent
+
+	// Define colors
+	colorMagenta := "\u001b[1;35m"
+	colorCyan := "\u001b[1;36m"
+	colorGreen := "\u001b[38;5;82m"
+	colorPurple := "\u001b[1;95m"
+	colorBlue := "\u001b[1;34m"
+	colorReset := "\u001b[0m"
+
+	// Header
+	sb.WriteString(fmt.Sprintf("\n%s🤖 Available Agents%s\n", colorMagenta, colorReset))
+
+	// List built-in agents
+	sb.WriteString(fmt.Sprintf("%sBuilt-in Agents%s\n", colorCyan, colorReset))
 	currentAgent := getCurrentAgent()
 
 	// List built-in agents in their original order
 	for _, name := range cache.builtinOrder {
 		agent := cache.agents[name]
 		if strings.EqualFold(agent.Name, currentAgent) {
-			sb.WriteString(fmt.Sprintf("\u001b[38;5;82m●\u001b[0m %s [%s%s%s] %s\n",
+			sb.WriteString(fmt.Sprintf("%s●%s %s [%s%s%s] %s\n",
+				colorGreen, colorReset,
 				agent.Emoji,
 				agent.LabelColor,
 				agent.Name,
-				"\u001b[0m", // Reset color
+				colorReset,
 				agent.Description))
 		} else {
 			sb.WriteString(fmt.Sprintf("○ %s [%s%s%s] %s\n",
 				agent.Emoji,
 				agent.LabelColor,
 				agent.Name,
-				"\u001b[0m", // Reset color
+				colorReset,
 				agent.Description))
 		}
 	}
 
 	// List user-defined agents if any exist
 	if len(cache.userOrder) > 0 {
-		sb.WriteString("\nUser-defined Agents\n")
+		sb.WriteString(fmt.Sprintf("\n%s🔧 User-defined Agents%s\n", colorCyan, colorReset))
 		for _, name := range cache.userOrder {
 			agent := cache.agents[name]
 			if strings.EqualFold(agent.Name, currentAgent) {
-				sb.WriteString(fmt.Sprintf("\u001b[38;5;82m●\u001b[0m %s [%s%s%s] %s\n",
+				sb.WriteString(fmt.Sprintf("%s●%s %s [%s%s%s] %s\n",
+					colorGreen, colorReset,
 					agent.Emoji,
 					agent.LabelColor,
 					agent.Name,
-					"\u001b[0m", // Reset color
+					colorReset,
 					agent.Description))
 			} else {
 				sb.WriteString(fmt.Sprintf("○ %s [%s%s%s] %s\n",
 					agent.Emoji,
 					agent.LabelColor,
 					agent.Name,
-					"\u001b[0m", // Reset color
+					colorReset,
 					agent.Description))
 			}
 		}
 	}
 
-	// Add hint for custom agents
-	sb.WriteString("\n\u001b[38;5;240mTIP: You can add and customize agents in ~/.chatty/agents\u001b[0m\n")
+	// Commands
+	sb.WriteString(fmt.Sprintf("\n%s💡 Commands%s\n", colorCyan, colorReset))
+	sb.WriteString(fmt.Sprintf("   %sSelect an agent:%s chatty --select %s\"Agent Name\"%s\n", 
+		colorPurple, colorReset, colorBlue, colorReset))
+
+	// Additional Agents Section
+	sb.WriteString(fmt.Sprintf("\n%s✨ Want More Agents?%s\n", colorCyan, colorReset))
+	sb.WriteString(fmt.Sprintf("   1. %sList sample agents:%s chatty --list-more\n", 
+		colorPurple, colorReset))
+	sb.WriteString(fmt.Sprintf("   2. %sInstall an agent:%s chatty --install %s<agent_name>%s\n", 
+		colorPurple, colorReset, colorBlue, colorReset))
+
+	// Legend
+	sb.WriteString(fmt.Sprintf("\n%s●%s Current agent  %s○%s Available agent\n", 
+		colorGreen, colorReset, colorReset, colorReset))
 
 	return sb.String()
 }
