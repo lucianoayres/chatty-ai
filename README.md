@@ -225,6 +225,11 @@ For detailed configuration options, use `chatty --show "Chatty"`.
 
 ## 🛠️ Creating Custom Agents
 
+Learn from examples:
+
+- [Built-in agents](cmd/chatty/agents/builtin) - Study our core agent configurations
+- [Sample agents](cmd/chatty/agents/samples) - Explore additional agent templates
+
 1. Start with a sample:
 
    ```bash
@@ -250,7 +255,7 @@ For detailed configuration options, use `chatty --show "Chatty"`.
 ### File Naming Conventions
 
 - Use lowercase: `data_scientist.yaml`
-- Use underscores for spaces: `machine_learning_expert.yaml`
+- Use underscores for spaces: `oliver_twist.yaml`
 - Use `.yaml` extension
 
 ### Color Customization
