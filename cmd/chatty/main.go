@@ -670,13 +670,8 @@ func handleMultiAgentConversation(config ConversationConfig) error {
     turnEmoji := "🔄"
     converseMargin := 1
 
-    // Print welcome message
-    fmt.Println("\n🎭 Multi-agent conversation started")
-    fmt.Println("Participants:")
-    for i, agent := range agentConfigs {
-        fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
-    }
-    fmt.Println() // Single line margin at bottom
+    // We don't need to print the welcome message and participants list here
+    // as it's already printed in the main function before calling this function
 
     currentMessage := config.Starter
     currentTurn := 1
@@ -1251,9 +1246,11 @@ func handleSingleAgentChat(agentName string, starter string, saveFile string) er
     // Print welcome message
     fmt.Printf("\n💬 Chat with %s %s\n", agent.Emoji, agent.Name)
     fmt.Printf("%s\n", agent.Description)
-    
+
     // Show exit message at the beginning of the chat
-    fmt.Printf("\nPress Enter with empty message to end the conversation\n\n")
+    fmt.Println()
+    fmt.Printf("Press Enter with empty message to end the conversation")
+    fmt.Println("\n")
     
     // Initialize conversation log
     var conversationLog strings.Builder
@@ -1525,16 +1522,16 @@ func main() {
         fmt.Println("  --list                        List available agents")
         fmt.Println("  --select <agent_name>         Select an agent")
         fmt.Println("  --current                     Show current agent")
-        fmt.Println("  --with <agent_name> [--debug] Start a direct chat with a single agent")
-        fmt.Println("  --converse <agents...>        Start a conversation between agents")
-        fmt.Println("      --starter \"message\"       Initial message to start the conversation")
-        fmt.Println("      --starter-file <path>     Read initial message from a text file")
+        fmt.Println("  --with <agent_name>           Start a direct chat with a single agent")
+        fmt.Println("  --with <agent1>,<agent2>,...  Start a conversation between agents (interactive mode)")
+        fmt.Println("      --topic \"message\"         Initial message for the conversation (required for --auto)")
+        fmt.Println("      --topic-file <path>       Read initial message from a text file (required for --auto)")
         fmt.Println("      --turns N                 Number of conversation turns (default: infinite)")
         fmt.Println("      --auto                    Enable autonomous conversation mode")
         fmt.Println("      --save <filename>         Save conversation log to a file")
-        fmt.Println("  --converse-random <N>         Start a conversation with N random agents")
-        fmt.Println("      --starter \"message\"       Initial message to start the conversation")
-        fmt.Println("      --starter-file <path>     Read initial message from a text file")
+        fmt.Println("  --with-random <N>             Start a conversation with N random agents")
+        fmt.Println("      --topic \"message\"         Initial message for the conversation (required for --auto)")
+        fmt.Println("      --topic-file <path>       Read initial message from a text file (required for --auto)")
         fmt.Println("      --turns N                 Number of conversation turns (default: infinite)")
         fmt.Println("      --auto                    Enable autonomous conversation mode")
         fmt.Println("      --save <filename>         Save conversation log to a file")
@@ -1549,38 +1546,245 @@ func main() {
     switch os.Args[1] {
     case "--with":
         if len(os.Args) < 3 {
-            fmt.Println("Usage: chatty --with <agent_name> [--debug]")
-            fmt.Println("\nThe --with command can only be used with an agent name and optional --debug flag.")
-            return
-        }
-
-        // Get agent name
-        agentName := os.Args[2]
-        
-        // Check for debug flag after the agent name
-        if len(os.Args) > 3 && os.Args[3] == "--debug" {
-            debugMode = true
-        } else if len(os.Args) > 3 {
-            fmt.Println("Error: Unknown argument after agent name. Only --debug is supported.")
-            fmt.Println("Usage: chatty --with <agent_name> [--debug]")
-            return
-        }
-
-        // Start the single-agent chat with no starter message or save file
-        if err := handleSingleAgentChat(agentName, "", ""); err != nil {
-            fmt.Printf("Error: %v\n", err)
-            return
-        }
-        return
-    case "--converse-random":
-        if len(os.Args) < 3 {
-            fmt.Println("Usage: chatty --converse-random <number_of_agents> [--starter \"message\" | --starter-file <path>] [--turns N] [--auto] [--save <filename>]")
+            fmt.Println("Usage: chatty --with <agent_name> or <agent1>,<agent2>,... [options]")
             fmt.Println("\nOptions:")
-            fmt.Println("  --starter \"message\"      Initial message to start the conversation")
-            fmt.Println("  --starter-file <path>    Read initial message from a text file")
-            fmt.Println("  --turns N                Number of conversation turns (default: infinite)")
-            fmt.Println("  --auto                   Enable autonomous conversation mode (agents talk among themselves)")
-            fmt.Println("  --save <filename>        Save conversation log to a file")
+            fmt.Println("  --topic \"message\"         Initial message for the conversation (required for --auto)")
+            fmt.Println("  --topic-file <path>       Read initial message from a text file (required for --auto)")
+            fmt.Println("  --turns N                 Number of conversation turns (default: infinite)")
+            fmt.Println("  --auto                    Enable autonomous conversation mode (requires --topic)")
+            fmt.Println("  --save <filename>         Save conversation log to a file")
+            return
+        }
+
+        // Parse the comma-separated agent names
+        agentList := strings.Split(os.Args[2], ",")
+        var agentNames []string
+        for _, agent := range agentList {
+            trimmedAgent := strings.TrimSpace(agent)
+            if trimmedAgent != "" {
+                agentNames = append(agentNames, trimmedAgent)
+            }
+        }
+
+        if len(agentNames) == 0 {
+            fmt.Println("Error: No valid agent names provided")
+            return
+        }
+
+        // Single agent mode
+        if len(agentNames) == 1 {
+            // Get agent name
+            agentName := agentNames[0]
+            
+            // Check if agent exists
+            if !agents.IsValidAgent(agentName) {
+                fmt.Printf("Error: Invalid agent name '%s'\n", agentName)
+                fmt.Println("\nAvailable agents:")
+                fmt.Print(agents.ListAgents())
+                return
+            }
+
+            // Parse other arguments
+            var saveFile string
+            var topicMessage string
+            var foundTopicArg bool
+            var autoMode bool
+
+            // Find the --topic, --topic-file, and --save arguments
+            for i := 3; i < len(os.Args); i++ {
+                switch os.Args[i] {
+                case "--topic":
+                    if foundTopicArg {
+                        fmt.Println("Error: cannot use both --topic and --topic-file")
+                        return
+                    }
+                    foundTopicArg = true
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --topic argument is missing")
+                        fmt.Println("\nUsage: --topic \"your message here\"")
+                        return
+                    }
+                    topicMessage = os.Args[i+1]
+                    i++
+                case "--topic-file":
+                    if foundTopicArg {
+                        fmt.Println("Error: cannot use both --topic and --topic-file")
+                        return
+                    }
+                    foundTopicArg = true
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --topic-file argument is missing")
+                        fmt.Println("\nUsage: --topic-file <path>")
+                        return
+                    }
+                    var err error
+                    topicMessage, err = readStarterFile(os.Args[i+1])
+                    if err != nil {
+                        fmt.Printf("Error: %v\n", err)
+                        return
+                    }
+                    i++
+                case "--auto":
+                    autoMode = true
+                case "--save":
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --save argument is missing")
+                        fmt.Println("\nUsage: --save <filename>")
+                        return
+                    }
+                    saveFile = os.Args[i+1]
+                    i++
+                }
+            }
+
+            // Auto mode is not valid for single agent chat
+            if autoMode {
+                fmt.Println("Error: --auto flag is only valid for multi-agent conversations")
+                return
+            }
+
+            // Start the single-agent chat with the provided topic message or empty string
+            if err := handleSingleAgentChat(agentName, topicMessage, saveFile); err != nil {
+                fmt.Printf("Error: %v\n", err)
+                return
+            }
+            return
+        } else {
+            // Multi-agent mode
+            // Parse other arguments
+            var config ConversationConfig
+            var topicMessage string
+            var turns int
+            var foundTopicArg bool
+            var autoMode bool
+            var saveFile string
+
+            // Set the agent names
+            config.Agents = agentNames
+
+            // Find the --topic, --topic-file, --auto, --turns, and --save arguments
+            for i := 3; i < len(os.Args); i++ {
+                switch os.Args[i] {
+                case "--topic":
+                    if foundTopicArg {
+                        fmt.Println("Error: cannot use both --topic and --topic-file")
+                        return
+                    }
+                    foundTopicArg = true
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --topic argument is missing")
+                        fmt.Println("\nUsage: --topic \"your message here\"")
+                        return
+                    }
+                    topicMessage = os.Args[i+1]
+                    i++
+                case "--topic-file":
+                    if foundTopicArg {
+                        fmt.Println("Error: cannot use both --topic and --topic-file")
+                        return
+                    }
+                    foundTopicArg = true
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --topic-file argument is missing")
+                        fmt.Println("\nUsage: --topic-file <path>")
+                        return
+                    }
+                    var err error
+                    topicMessage, err = readStarterFile(os.Args[i+1])
+                    if err != nil {
+                        fmt.Printf("Error: %v\n", err)
+                        return
+                    }
+                    i++
+                case "--auto":
+                    autoMode = true
+                case "--turns":
+                    if i+1 < len(os.Args) {
+                        turns, err = strconv.Atoi(os.Args[i+1])
+                        if err != nil {
+                            fmt.Printf("Error: invalid turns value: %v\n", err)
+                            return
+                        }
+                        i++
+                    }
+                case "--save":
+                    if i+1 >= len(os.Args) {
+                        fmt.Println("Error: --save argument is missing")
+                        fmt.Println("\nUsage: --save <filename>")
+                        return
+                    }
+                    saveFile = os.Args[i+1]
+                    i++
+                }
+            }
+
+            // For autonomous mode, topic is required
+            if autoMode && !foundTopicArg {
+                fmt.Println("Error: --topic or --topic-file is required when using --auto")
+                return
+            }
+
+            // Display participants list for auto mode
+            if autoMode {
+                fmt.Println("\n🎭 Multi-agent conversation started")
+                fmt.Println("Participants:")
+                for i, agentName := range agentNames {
+                    agent := agents.GetAgentConfig(agentName)
+                    fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
+                }
+                fmt.Println()
+            }
+
+            // For interactive mode, if no topic is provided, prompt the user
+            if !autoMode && !foundTopicArg {
+                fmt.Println("\n🎭 Multi-agent conversation started")
+                fmt.Println("Participants:")
+                for i, agentName := range agentNames {
+                    agent := agents.GetAgentConfig(agentName)
+                    fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
+                }
+                
+                fmt.Println("\nEnter your message to start the conversation:")
+                fmt.Println()
+                fmt.Println("Press Enter with empty message to end the conversation")
+                fmt.Println()
+                fmt.Print(colorize("👤 User: ", "\033[1;36m"))
+                
+                reader := bufio.NewReader(os.Stdin)
+                input, err := reader.ReadString('\n')
+                if err != nil {
+                    fmt.Printf("Error reading input: %v\n", err)
+                    return
+                }
+                
+                topicMessage = strings.TrimSpace(input)
+                if topicMessage == "" {
+                    fmt.Println("Conversation cancelled.")
+                    return
+                }
+            }
+
+            config.Starter = topicMessage
+            config.Turns = turns
+            config.AutoMode = autoMode
+            config.SaveFile = saveFile
+
+            if err := handleMultiAgentConversation(config); err != nil {
+                fmt.Printf("Error: %v\n", err)
+                return
+            }
+            return
+        }
+
+    case "--with-random":
+        if len(os.Args) < 3 {
+            fmt.Println("Usage: chatty --with-random <number_of_agents> [options]")
+            fmt.Println("\nOptions:")
+            fmt.Println("  --topic \"message\"         Initial message for the conversation (required for --auto)")
+            fmt.Println("  --topic-file <path>       Read initial message from a text file (required for --auto)")
+            fmt.Println("  --turns N                 Number of conversation turns (default: infinite)")
+            fmt.Println("  --auto                    Enable autonomous conversation mode")
+            fmt.Println("  --save <filename>         Save conversation log to a file")
             return
         }
 
@@ -1600,44 +1804,44 @@ func main() {
 
         // Parse other arguments
         var config ConversationConfig
-        var starter string
+        var topicMessage string
         var turns int
-        var foundStarterArg bool
+        var foundTopicArg bool
         var autoMode bool
         var saveFile string
 
         // Set the randomly selected agents
         config.Agents = selectedAgents
 
-        // Find the --starter or --starter-file argument and check for --auto and --save
+        // Find the --topic, --topic-file, --auto, --turns, and --save arguments
         for i := 3; i < len(os.Args); i++ {
             switch os.Args[i] {
-            case "--starter":
-                if foundStarterArg {
-                    fmt.Println("Error: cannot use both --starter and --starter-file")
+            case "--topic":
+                if foundTopicArg {
+                    fmt.Println("Error: cannot use both --topic and --topic-file")
                     return
                 }
-                foundStarterArg = true
+                foundTopicArg = true
                 if i+1 >= len(os.Args) {
-                    fmt.Println("Error: --starter argument is missing")
-                    fmt.Println("\nUsage: --starter \"your message here\"")
+                    fmt.Println("Error: --topic argument is missing")
+                    fmt.Println("\nUsage: --topic \"your message here\"")
                     return
                 }
-                starter = os.Args[i+1]
+                topicMessage = os.Args[i+1]
                 i++
-            case "--starter-file":
-                if foundStarterArg {
-                    fmt.Println("Error: cannot use both --starter and --starter-file")
+            case "--topic-file":
+                if foundTopicArg {
+                    fmt.Println("Error: cannot use both --topic and --topic-file")
                     return
                 }
-                foundStarterArg = true
+                foundTopicArg = true
                 if i+1 >= len(os.Args) {
-                    fmt.Println("Error: --starter-file argument is missing")
-                    fmt.Println("\nUsage: --starter-file <path>")
+                    fmt.Println("Error: --topic-file argument is missing")
+                    fmt.Println("\nUsage: --topic-file <path>")
                     return
                 }
                 var err error
-                starter, err = readStarterFile(os.Args[i+1])
+                topicMessage, err = readStarterFile(os.Args[i+1])
                 if err != nil {
                     fmt.Printf("Error: %v\n", err)
                     return
@@ -1665,19 +1869,53 @@ func main() {
             }
         }
 
-        if !foundStarterArg {
-            fmt.Println("Error: either --starter or --starter-file argument is required")
-            fmt.Println("\nUsage: --starter \"your message here\"")
-            fmt.Println("   or: --starter-file <path>")
+        // For autonomous mode, topic is required
+        if autoMode && !foundTopicArg {
+            fmt.Println("Error: --topic or --topic-file is required when using --auto")
             return
         }
 
-        if starter == "" {
-            fmt.Println("Error: starter message cannot be empty")
-            return
+        // Display participants list for auto mode
+        if autoMode {
+            fmt.Println("\n🎭 Multi-agent conversation started")
+            fmt.Println("Participants:")
+            for i, agentName := range selectedAgents {
+                agent := agents.GetAgentConfig(agentName)
+                fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
+            }
+            fmt.Println()
         }
 
-        config.Starter = starter
+        // For interactive mode, if no topic is provided, prompt the user
+        if !autoMode && !foundTopicArg {
+            fmt.Println("\n🎭 Multi-agent conversation started")
+            fmt.Println("Participants:")
+            for i, agentName := range selectedAgents {
+                agent := agents.GetAgentConfig(agentName)
+                fmt.Printf("%d. %s %s - %s\n", i+1, agent.Emoji, agent.Name, agent.Description)
+            }
+            
+            fmt.Println("\nEnter your message to start the conversation:")
+            fmt.Println()
+            fmt.Println("Press Enter with empty message to end the conversation")
+            fmt.Println()
+            fmt.Print(colorize("👤 User: ", "\033[1;36m"))
+            
+            reader := bufio.NewReader(os.Stdin)
+            input, err := reader.ReadString('\n')
+            if err != nil {
+                fmt.Printf("Error reading input: %v\n", err)
+                return
+            }
+            
+            topicMessage = strings.TrimSpace(input)
+            if topicMessage == "" {
+                fmt.Println("Conversation cancelled.")
+                return
+            }
+        }
+
+        config.Starter = topicMessage
         config.Turns = turns
         config.AutoMode = autoMode
         config.SaveFile = saveFile
@@ -1687,120 +1925,7 @@ func main() {
             return
         }
         return
-    case "--converse":
-        if len(os.Args) < 4 {
-            fmt.Println("Usage: chatty --converse agent1,agent2[,agent3...] [--starter \"message\" | --starter-file <path>] [--turns N] [--auto] [--save <filename>]")
-            fmt.Println("\nOptions:")
-            fmt.Println("  --starter \"message\"      Initial message to start the conversation")
-            fmt.Println("  --starter-file <path>    Read initial message from a text file")
-            fmt.Println("  --turns N                Number of conversation turns (default: infinite)")
-            fmt.Println("  --auto                   Enable autonomous conversation mode (agents talk among themselves)")
-            fmt.Println("  --save <filename>        Save conversation log to a file")
-            return
-        }
 
-        // Parse arguments
-        var config ConversationConfig
-        var starter string
-        var turns int
-        var foundStarterArg bool
-        var autoMode bool
-        var saveFile string
-
-        // Parse the comma-separated agent names
-        agentList := strings.Split(os.Args[2], ",")
-        config.Agents = make([]string, 0, len(agentList))
-        for _, agent := range agentList {
-            trimmedAgent := strings.TrimSpace(agent)
-            if trimmedAgent != "" {
-                config.Agents = append(config.Agents, trimmedAgent)
-            }
-        }
-
-        // Find the --starter or --starter-file argument and check for --auto and --save
-        for i := 3; i < len(os.Args); i++ {
-            switch os.Args[i] {
-            case "--starter":
-                if foundStarterArg {
-                    fmt.Println("Error: cannot use both --starter and --starter-file")
-                    return
-                }
-                foundStarterArg = true
-                if i+1 >= len(os.Args) {
-                    fmt.Println("Error: --starter argument is missing")
-                    fmt.Println("\nUsage: --starter \"your message here\"")
-                    return
-                }
-                starter = os.Args[i+1]
-                i++
-            case "--starter-file":
-                if foundStarterArg {
-                    fmt.Println("Error: cannot use both --starter and --starter-file")
-                    return
-                }
-                foundStarterArg = true
-                if i+1 >= len(os.Args) {
-                    fmt.Println("Error: --starter-file argument is missing")
-                    fmt.Println("\nUsage: --starter-file <path>")
-                    return
-                }
-                var err error
-                starter, err = readStarterFile(os.Args[i+1])
-                if err != nil {
-                    fmt.Printf("Error: %v\n", err)
-                    return
-                }
-                i++
-            case "--auto":
-                autoMode = true
-            case "--turns":
-                if i+1 < len(os.Args) {
-                    turns, err = strconv.Atoi(os.Args[i+1])
-                    if err != nil {
-                        fmt.Printf("Error: invalid turns value: %v\n", err)
-                        return
-                    }
-                    i++
-                }
-            case "--save":
-                if i+1 >= len(os.Args) {
-                    fmt.Println("Error: --save argument is missing")
-                    fmt.Println("\nUsage: --save <filename>")
-                    return
-                }
-                saveFile = os.Args[i+1]
-                i++
-            }
-        }
-
-        if !foundStarterArg {
-            fmt.Println("Error: either --starter or --starter-file argument is required")
-            fmt.Println("\nUsage: --starter \"your message here\"")
-            fmt.Println("   or: --starter-file <path>")
-            return
-        }
-
-        if starter == "" {
-            fmt.Println("Error: starter message cannot be empty")
-            return
-        }
-
-        if len(config.Agents) < 2 {
-            fmt.Println("Error: at least two agents must be specified, separated by commas")
-            fmt.Println("\nExample: chatty --converse plato,aristotle,socrates --starter \"Let's discuss philosophy\"")
-            return
-        }
-
-        config.Starter = starter
-        config.Turns = turns
-        config.AutoMode = autoMode
-        config.SaveFile = saveFile
-
-        if err := handleMultiAgentConversation(config); err != nil {
-            fmt.Printf("Error: %v\n", err)
-            return
-        }
-        return
     case "--current":
         fmt.Printf("Current agent: %s - %s\n", currentAgent.Name, currentAgent.Description)
         return

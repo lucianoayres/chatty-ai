@@ -13,7 +13,7 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 - 🎲 **Random Conversations**: Let fate decide your conversation partners for unexpected and exciting discussions
 - 🤖 **Autonomous Mode**: Watch as historical figures and experts discuss topics on their own
 - 📝 **Persistent Memory**: Each agent remembers your conversations
-- 🌍 **Multi-Language Support**: Chat in any language your Ollama model understands
+- 🌍 **Multi-Language Support**: Chat in multiple languages with your AI models
 
 ## Screenshot
 
@@ -21,20 +21,14 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 
 ## 🔧 Prerequisites
 
-Chatty requires [Ollama](https://ollama.ai) to run the AI models:
-
-```bash
-# Install Ollama from https://ollama.ai
-# Then start the Ollama service:
-ollama serve
-```
+Chatty requires [Ollama](https://ollama.ai) to run the AI models.
 
 ## 🚀 Quick Start
 
-Setup Ollama:
+After installing Ollama, pull the llama3.2 model:
 
 ```bash
-# Install Ollama first (https://ollama.ai) and pull llama3.2 model
+# Pull the llama3.2 model
 ollama pull llama3.2
 
 # Start the Ollama service
@@ -58,8 +52,12 @@ Start Chatty:
 ```bash
 # First-time setup (required)
 chatty init
+```
 
-# Start a simple chat with the default agent
+Try one of the various modes:
+
+```bash
+# Send a one-off message to the default agent (not a chat session)
 chatty "What can you do?"
 
 # Switch to a different agent
@@ -68,23 +66,29 @@ chatty --select "Einstein"
 # Then engage in impossible conversations
 chatty "Can you explain the quantum mechanics behind TikTok viral videos, or is it just pure sorcery?"
 
-# Play games with your historical figures
-chatty --converse "Shakespeare,Jane Austen,Gandalf" --starter "Let's play Two Truths and a Lie!"
+# Start a direct chat with a specific agent
+chatty --with "Freud"
 
-# Create the movie plot of your dreams
-chatty --converse "Cleopatra,Asimov,Beethoven" --starter "Encene a movie called Cyborg Hamsters: Escape from the Moon" --auto
+# Group chat with multiple agents
+chatty --with "Shakespeare,Jane Austen,Gandalf"
+
+# Play games with your favorite historical figures
+chatty --with "Cleopatra,Asimov,Beethoven" --topic "Let's play Two Truths and a Lie" --auto
 
 # Let fate decide your conversation partners
-chatty --converse-random 4 --starter "Let's have a completely unexpected discussion!" --auto
+chatty --with-random 4 --topic "Let's have a completely unexpected discussion!" --auto
+
+# Use a text file as the conversation starter
+chatty --with "Plato,Aristotle" --topic-file ~/my_philosophy_questions.txt
 
 # Unlearn everything you know about any topic
-chatty --converse Zeus,Turing,Tux --starter "Explain how the cloud works, wrong answers only" --auto
+chatty --with "Zeus,Turing,Tux" --topic "Explain how the cloud works, wrong answers only" --auto
 
 # Plan spectacular events
-chatty --converse Shakespeare,Aristotle,Dracula --starter "Let's plan the ultimate vampire-themed dinner party"
+chatty --with "Shakespeare,Aristotle,Dracula" --topic "Let's plan the ultimate vampire-themed dinner party"
 
 # Brainstorm revolutionary business ideas
-chatty --converse Marx,Tesla,"Sherlock Holmes" --starter "Pitch a revolutionary business idea that combines electricity, detective work, and communism"
+chatty --with "Marx,Tesla,Sherlock Holmes" --topic "Pitch a revolutionary business idea that combines electricity, detective work, and communism"
 ```
 
 ## Available Agents
@@ -93,13 +97,13 @@ chatty --converse Marx,Tesla,"Sherlock Holmes" --starter "Pitch a revolutionary 
 
 ### 💻 Built-in Agents
 
-Step into a world of extraordinary conversations with our diverse roster of pre-installed agents! Chat with brilliant minds like **Einstein** about the mysteries of the universe, explore the art of code with **Ada**, or debate philosophy with **Aristotle** and **Plato**. Need technical help? **Tux** and **Nimble** are ready to assist with Linux and productivity. Want something different? Share stories with **Shakespeare**, investigate mysteries with **Sherlock Holmes**, or discuss revolution with **Marx**.
+Step into a world of extraordinary conversations with our diverse roster of [pre-installed agents](cmd/chatty/agents)! Chat with brilliant minds like **Einstein** about the mysteries of the universe, explore the art of code with **Ada**, or debate philosophy with **Aristotle** and **Plato**. Need technical help? **Tux** and **Nimble** are ready to assist with Linux and productivity. Want something different? Share stories with **Shakespeare**, investigate mysteries with **Sherlock Holmes**, or discuss revolution with **Marx**.
 
 Each agent brings their unique perspective and expertise to the conversation. Use `chatty --list` to see all available agents and their specialties.
 
 ### 🎭 Sample Personality Agents
 
-Want even more fascinating conversations? Discover our collection of over 50 additional personalities ready to be brought to life! Explore the cosmos with **Carl Sagan**, unravel the mysteries of consciousness with **Sigmund Freud**, or dive into the depths of gothic literature with **Edgar Allan Poe**. Challenge your perspectives with **Nietzsche**'s philosophical provocations, or get cybersecurity insights from our **Security Expert**.
+Want even more fascinating conversations? Discover our collection of over [50 additional sample personalities](cmd/chatty/agents/samples) ready to be brought to life! Explore the cosmos with **Carl Sagan**, unravel the mysteries of consciousness with **Sigmund Freud**, or dive into the depths of gothic literature with **Edgar Allan Poe**. Challenge your perspectives with **Nietzsche**'s philosophical provocations, or get cybersecurity insights from our **Security Expert**.
 
 To start using these personalities:
 
@@ -124,30 +128,30 @@ cp ~/.chatty/agents/hawking.yaml.sample ~/.chatty/agents/hawking.yaml
 cp ~/.chatty/agents/captain_nemo.yaml.sample ~/.chatty/agents/captain_nemo.yaml
 
 # Then start your discussion
-chatty --converse "Carl Sagan","Stephen Hawking","Captain Nemo" --starter "Let's explore the mysteries of space and sea - which frontier is more fascinating?"
+chatty --with "Carl Sagan,Stephen Hawking,Captain Nemo" --topic "Let's explore the mysteries of space and sea - which frontier is more fascinating?"
 ```
 
 ### 🎓 Learning & Exploration
 
 ```bash
 # Using built-in agents
-chatty --converse "Ada","Nimble" --starter "How to organize a complex software project?"
+chatty --with "Ada,Nimble" --topic "How to organize a complex software project?"
 
 # Using personality agents (after setting them up)
-chatty --converse "Feynman","Marie Curie","Darwin" --starter "Explain how scientific discovery happens"
+chatty --with "Feynman,Marie Curie,Darwin" --topic "Explain how scientific discovery happens"
 ```
 
 ### 🎭 Entertainment & Creativity
 
 ```bash
 # Unlikely Collaborations
-chatty --converse "Shakespeare","Mark Twain","Jane Austen" --starter "Write a story about time travel"
+chatty --with "Shakespeare,Mark Twain,Jane Austen" --topic "Write a story about time travel"
 
 # Cultural Conversations
-chatty --converse "Mozart","Louis Armstrong","Elvis Presley" --starter "Create a new musical genre"
+chatty --with "Mozart,Louis Armstrong,Elvis Presley" --topic "Create a new musical genre"
 
 # Philosophical Debates
-chatty --converse "Socrates","Kant","Albert Camus" --starter "Is social media making us happier?"
+chatty --with "Socrates,Kant,Albert Camus" --topic "Is social media making us happier?"
 ```
 
 ## 💭 Chat Modes
@@ -166,6 +170,12 @@ chatty --select "Sherlock Holmes"
 # Get creative with your questions
 chatty "Analyze my coffee stains and deduce my morning routine"
 
+# Start a direct chat with a specific agent
+chatty --with "Einstein"
+
+# Start a direct chat with an initial topic
+chatty --with "Einstein" --topic "Explain relativity to a 5-year-old"
+
 # Save chat logs to a file
 chatty "What's the meaning of life?" --save meaning_of_life.txt
 
@@ -176,66 +186,70 @@ chatty --current
 chatty --clear "Shakespeare"
 ```
 
-**Note**: When using `--select`, the agent name must exactly match the `name` field in the agent's YAML file. For example, if the YAML contains `name: "Marie Curie"`, you must use `--select "Marie Curie"` (including quotes if the name contains spaces).
+**Note**: When using `--select` or `--with`, the agent name must exactly match the `name` field in the agent's YAML file. For example, if the YAML contains `name: "Marie Curie"`, you must use `--select "Marie Curie"` (including quotes if the name contains spaces).
 
 ### 🤝 Multi-Agent Conversations
 
 Create interactive discussions between AI agents:
 
 ```bash
-# Basic examples - single-word names don't need quotes
-chatty --converse Ada,Tux --starter "Let's discuss Linux development"
-chatty --converse Einstein,Newton,Darwin --starter "Let's discuss gravity"
+# Basic examples - comma-separated list of agents
+chatty --with "Ada,Tux"
+# You'll be prompted to enter a topic to start the conversation
 
-# When an agent has multiple words in their name, use quotes
-chatty --converse "Marie Curie",Einstein,Darwin --starter "Discuss scientific method"
-chatty --converse "Edgar Allan Poe","Mark Twain",Shakespeare --starter "Write a story"
+# Provide a topic directly
+chatty --with "Einstein,Newton,Darwin" --topic "Let's discuss gravity"
 
-# You can also use quotes for all names (recommended for consistency)
-chatty --converse "Einstein","Newton","Darwin" --starter "How would you explain gravity?"
+# When an agent has multiple words in their name, include them in the comma-separated list
+chatty --with "Marie Curie,Einstein,Darwin" --topic "Discuss scientific method"
+chatty --with "Edgar Allan Poe,Mark Twain,Shakespeare" --topic "Write a story"
 
 # Random agent conversations - let fate decide!
-chatty --converse-random 3 --starter "Let's have a surprise discussion!"
-chatty --converse-random 5 --starter "Brainstorm crazy ideas" --auto
-chatty --converse-random 4 --starter "What's the meaning of life?" --turns 10
+chatty --with-random 3
+# You'll be prompted to enter a topic to start the conversation
+
+# Random agents with a specific topic and autonomous mode
+chatty --with-random 5 --topic "Brainstorm crazy ideas" --auto
+
+# Limit the number of conversation turns
+chatty --with-random 4 --topic "What's the meaning of life?" --turns 10
 
 # Save conversation logs to a file
-chatty --converse "Einstein","Newton" --starter "Discuss gravity" --save gravity_discussion.txt
-chatty --converse-random 3 --starter "Brainstorm ideas" --auto --save brainstorm.txt
+# This is an experimental feature and performance may vary
+chatty --with "Einstein,Newton" --topic "Discuss gravity" --save gravity_discussion.txt
+chatty --with-random 3 --topic "Brainstorm ideas" --auto --save brainstorm.txt
 
 # More examples
-chatty --converse Ada,Tux,Nimble --starter "How can we improve code quality?"
-chatty --converse "Marie Curie","Ada Lovelace",Einstein --starter "Women in science"
-chatty --converse Mozart,"Louis Armstrong","Elvis Presley" --starter "Future of music"
+chatty --with "Ada,Tux,Nimble" --topic "How can we improve code quality?"
+chatty --with "Marie Curie,Ada Lovelace,Einstein" --topic "Women in science"
+chatty --with "Mozart,Louis Armstrong,Elvis Presley" --topic "Future of music"
 
 # Using special characters (escape with \)
-chatty --converse Ada,Tux --starter "How to make \$100 last a month?"
+chatty --with "Ada,Tux" --topic "How to make \$100 last a month?"
 
-# Use a text file as the starter message
-chatty --converse "Shakespeare","Tolkien" --starter-file story_prompt.txt
-chatty --converse-random 3 --starter-file research_topic.txt
+# Use a text file as the topic message
+chatty --with "Shakespeare,Tolkien" --topic-file story_prompt.txt
+chatty --with-random 3 --topic-file research_topic.txt
 
 # Auto mode and turn limits work the same way
-chatty --converse Einstein,Newton --starter "Discuss gravity" --auto
-chatty --converse "Marie Curie",Einstein --starter "Future of physics" --turns 5
+chatty --with "Einstein,Newton" --topic "Discuss gravity" --auto
+chatty --with "Marie Curie,Einstein" --topic "Future of physics" --turns 5
 ```
 
-**Note**: When using `--converse`, you can either:
+**Note**: When using `--with`, provide a comma-separated list of agent names. For multi-word agent names, include them in the list with the commas.
 
-- Skip quotes for single-word names: `Ada,Tux,Einstein`
-- Use quotes only for multi-word names: `"Marie Curie",Einstein,Newton`
-- Use quotes for all names (recommended): `"Einstein","Newton","Darwin"`
+When using `--with-random`, just specify the number of agents (between 2 and 15) you want in the conversation. The agents will be randomly selected from both built-in and user-defined agents.
 
-When using `--converse-random`, just specify the number of agents (between 2 and 15) you want in the conversation. The agents will be randomly selected from both built-in and user-defined agents.
+You can provide the topic message in two ways:
 
-You can provide the starter message in two ways:
+- Using `--topic "message"` for direct text input
+- Using `--topic-file path` to read the message from a text file
 
-- Using `--starter "message"` for direct text input
-- Using `--starter-file path` to read the message from a text file
+If you don't provide a topic with the `--topic` or `--topic-file` flags in interactive mode, you'll be prompted to enter one when the conversation starts.
 
 ### How Conversations Work
 
-1. First turn starts with your starter message
+1. First turn starts with your topic message
 2. Each agent responds in sequence (no duplicates allowed)
 3. After each turn:
    - In normal mode: you're prompted for a new message
@@ -287,7 +301,7 @@ Example with optional fields:
 
 The guidelines settings control how agents behave in different conversation modes:
 
-- `interactive_guidelines`: Used in regular conversations where humans participate. This is the default mode when using `--converse` without the `--auto` flag. These guidelines encourage agents to interact with both human users and other agents.
+- `interactive_guidelines`: Used in regular conversations where humans participate. This is the default mode when using `--with` without the `--auto` flag. These guidelines encourage agents to interact with both human users and other agents.
 
 - `autonomous_guidelines`: Used only when the `--auto` flag is enabled. These guidelines are specifically designed for agent-to-agent conversations without human participation, encouraging more autonomous discussion between the agents.
 
