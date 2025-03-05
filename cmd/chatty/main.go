@@ -2288,7 +2288,21 @@ func main() {
         
         // Check if the target agent already exists
         if _, err := os.Stat(targetAgentPath); err == nil {
-            fmt.Printf("Error: Agent '%s' already exists\n", agentName)
+            // Read the existing agent file to get its name
+            data, err := os.ReadFile(targetAgentPath)
+            if err == nil {
+                var existingAgent agents.AgentConfig
+                if err := yaml.Unmarshal(data, &existingAgent); err == nil {
+                    fmt.Printf("\nError: Agent '%s' is already installed!\n", agentName)
+                    fmt.Printf("\nTo chat with %s, try:\n", existingAgent.Name)
+                    fmt.Printf("  • Start a chat: chatty --with \"%s\"\n", existingAgent.Name)
+                    fmt.Printf("  • Set as current: chatty --select \"%s\"\n", existingAgent.Name)
+                    fmt.Printf("  • View details: chatty --show \"%s\"\n\n", existingAgent.Name)
+                    os.Exit(1)
+                }
+            }
+            // Fallback to simple error if we can't read the agent details
+            fmt.Printf("Error: Agent '%s' is already installed\n", agentName)
             os.Exit(1)
         }
         

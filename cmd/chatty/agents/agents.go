@@ -438,7 +438,7 @@ func ListAgents() string {
 
 	// List user-defined agents if any exist
 	if len(cache.userOrder) > 0 {
-		sb.WriteString(fmt.Sprintf("\n%s🔧 User-defined Agents%s\n", colorCyan, colorReset))
+		sb.WriteString(fmt.Sprintf("\n%sUser-defined Agents%s\n", colorCyan, colorReset))
 		for _, name := range cache.userOrder {
 			agent := cache.agents[name]
 			if strings.EqualFold(agent.Name, currentAgent) {
