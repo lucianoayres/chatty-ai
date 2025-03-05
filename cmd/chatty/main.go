@@ -10,10 +10,13 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"chatty/cmd/chatty/agents"
 )
@@ -1520,6 +1523,7 @@ func main() {
         fmt.Println("  init                          Initialize Chatty environment")
         fmt.Println("  --clear [all|agent_name]      Clear chat history (all or specific agent)")
         fmt.Println("  --list                        List available agents")
+        fmt.Println("  --more                        List sample agents available for installation")
         fmt.Println("  --select <agent_name>         Select an agent")
         fmt.Println("  --current                     Show current agent")
         fmt.Println("  --with <agent_name>           Start a direct chat with a single agent")
@@ -1942,6 +1946,114 @@ func main() {
     case "--list":
         fmt.Print(agents.ListAgents())
         return
+    case "--more":
+        fmt.Println("\n🎭 Sample Agents Available for Installation")
+        fmt.Println("These sample agents can be copied to your agents directory.")
+        fmt.Println("To install a sample agent, use: cp ~/.chatty/agents/AGENT_NAME.yaml.sample ~/.chatty/agents/AGENT_NAME.yaml")
+        fmt.Println()
+
+        // Get the user's home directory
+        homeDir, err := os.UserHomeDir()
+        if err != nil {
+            fmt.Printf("Error getting home directory: %v\n", err)
+            os.Exit(1)
+        }
+
+        // Construct the path to the user's agents directory
+        userDir := filepath.Join(homeDir, ".chatty", "agents")
+        
+        // Read the directory
+        files, err := os.ReadDir(userDir)
+        if err != nil {
+            fmt.Printf("Error reading agents directory: %v\n", err)
+            os.Exit(1)
+        }
+
+        // Filter for .sample files and extract agent names
+        var sampleAgents []string
+        for _, file := range files {
+            if strings.HasSuffix(file.Name(), ".yaml.sample") {
+                // Extract the agent name without the .yaml.sample extension
+                agentName := strings.TrimSuffix(file.Name(), ".yaml.sample")
+                sampleAgents = append(sampleAgents, agentName)
+            }
+        }
+
+        // Sort the agent names
+        sort.Strings(sampleAgents)
+
+        // Print the agent names in columns
+        if len(sampleAgents) > 0 {
+            for i, agent := range sampleAgents {
+                fmt.Printf("%-20s", agent)
+                if (i+1)%4 == 0 {
+                    fmt.Println()
+                }
+            }
+            // Add a newline if the last row is incomplete
+            if len(sampleAgents)%4 != 0 {
+                fmt.Println()
+            }
+            fmt.Printf("\nTotal sample agents available: %d\n", len(sampleAgents))
+        } else {
+            fmt.Println("No sample agents found.")
+        }
+        os.Exit(0)
+    case "--view":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Missing agent name. Usage: chatty --view <agent_name>")
+            os.Exit(1)
+        }
+        
+        agentName := os.Args[2]
+        
+        // Check if the agent exists
+        if !agents.IsValidAgent(agentName) {
+            // If not a valid agent, check if it's a sample agent
+            homeDir, err := os.UserHomeDir()
+            if err != nil {
+                fmt.Printf("Error getting home directory: %v\n", err)
+                os.Exit(1)
+            }
+            
+            sampleAgentPath := filepath.Join(homeDir, ".chatty", "agents", agentName+".yaml.sample")
+            
+            if _, err := os.Stat(sampleAgentPath); err == nil {
+                // It's a sample agent, read the file
+                data, err := os.ReadFile(sampleAgentPath)
+                if err != nil {
+                    fmt.Printf("Error reading sample agent file: %v\n", err)
+                    os.Exit(1)
+                }
+                
+                fmt.Printf("\n🔍 Sample Agent Definition: %s\n\n", agentName)
+                fmt.Println(string(data))
+            } else {
+                fmt.Printf("Error: Agent '%s' not found\n", agentName)
+                os.Exit(1)
+            }
+        } else {
+            // Get the agent configuration using the agents package
+            agent := agents.GetAgentConfig(agentName)
+            
+            // Create a YAML representation of the agent
+            yamlData, err := yaml.Marshal(agent)
+            if err != nil {
+                fmt.Printf("Error converting agent to YAML: %v\n", err)
+                os.Exit(1)
+            }
+            
+            // Determine agent type
+            agentType := "User Agent"
+            if agent.Source == "built-in" {
+                agentType = "Built-in Agent"
+            }
+            
+            // Display the agent definition
+            fmt.Printf("\n🔍 %s Definition: %s\n\n", agentType, agent.Name)
+            fmt.Println(string(yamlData))
+        }
+        os.Exit(0)
     case "--select":
         if len(os.Args) < 3 {
             fmt.Println("Please specify an agent name")
