@@ -492,7 +492,9 @@ func IsValidAgent(name string) bool {
 
 // GetHistoryFileName returns the history filename for a given agent
 func GetHistoryFileName(agentName string) string {
-	return fmt.Sprintf("chat_history_%s.json", strings.ToLower(agentName))
+	// Get the proper case for the agent name from the config
+	agent := GetAgentConfig(agentName)
+	return fmt.Sprintf("chat_history_%s.json", strings.ToLower(agent.Name))
 }
 
 // CopySampleAgents copies sample agent configurations to user directory
@@ -710,4 +712,83 @@ func GetDefaultConfig() Config {
 		Model: defaultModel,
 		AutoMode: false,
 	}
+}
+
+// UninstallAgent removes a user-defined agent
+func UninstallAgent(name string) error {
+	refreshIfNeeded()
+
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
+
+	// Check if agent exists
+	agent, exists := cache.agents[strings.ToLower(name)]
+	if !exists {
+		return fmt.Errorf("agent '%s' not found", name)
+	}
+
+	// Check if it's a built-in agent
+	if agent.Source == "built-in" {
+		return fmt.Errorf("cannot uninstall built-in agent '%s'", name)
+	}
+
+	// Get user agents directory
+	userDir, err := getUserAgentsDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user agents directory: %v", err)
+	}
+
+	// Find and remove the agent file
+	files, err := os.ReadDir(userDir)
+	if err != nil {
+		return fmt.Errorf("failed to read user agents directory: %v", err)
+	}
+
+	found := false
+	for _, file := range files {
+		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml")) {
+			path := filepath.Join(userDir, file.Name())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+
+			var fileAgent AgentConfig
+			if err := yaml.Unmarshal(data, &fileAgent); err != nil {
+				continue
+			}
+
+			if strings.EqualFold(fileAgent.Name, name) {
+				// Remove the agent file
+				if err := os.Remove(path); err != nil {
+					return fmt.Errorf("failed to remove agent file: %v", err)
+				}
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("agent file for '%s' not found", name)
+	}
+
+	// If this was the current agent, switch to the default agent
+	config, err := GetCurrentConfig()
+	if err == nil && strings.EqualFold(config.CurrentAgent, name) {
+		if err := UpdateCurrentAgent(DefaultAgent.Name); err != nil {
+			return fmt.Errorf("failed to update current agent: %v", err)
+		}
+	}
+
+	// Remove from cache
+	delete(cache.agents, strings.ToLower(name))
+	for i, agentName := range cache.userOrder {
+		if strings.EqualFold(agentName, name) {
+			cache.userOrder = append(cache.userOrder[:i], cache.userOrder[i+1:]...)
+			break
+		}
+	}
+
+	return nil
 } 

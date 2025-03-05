@@ -176,7 +176,9 @@ func getHistoryPathForAgent(agentName string) (string, error) {
         return "", err
     }
     
-    historyFile := agents.GetHistoryFileName(agentName)
+    // Get the proper case for the agent name from the config
+    agent := agents.GetAgentConfig(agentName)
+    historyFile := agents.GetHistoryFileName(agent.Name)
     return filepath.Join(baseDir, historyFile), nil
 }
 
@@ -1566,12 +1568,9 @@ func main() {
         fmt.Println("      --auto                    Enable autonomous conversation mode")
         fmt.Println("      --save <filename>         Save conversation log to a file")
         fmt.Println("  --with-random <N>             Start a conversation with N random agents")
-        fmt.Println("      --topic \"message\"         Initial message for the conversation (required for --auto)")
-        fmt.Println("      --topic-file <path>       Read initial message from a text file (required for --auto)")
-        fmt.Println("      --turns N                 Number of conversation turns (default: infinite)")
-        fmt.Println("      --auto                    Enable autonomous conversation mode")
-        fmt.Println("      --save <filename>         Save conversation log to a file")
-        fmt.Println("  --debug                       Show debug information including request JSON")
+        fmt.Println("  --install <agent_name>        Install a new agent from available samples")
+        fmt.Println("  --uninstall <agent_name>      Uninstall a user-defined agent")
+        fmt.Println("  --show <agent_name>           Show detailed information about an agent")
         fmt.Println("\nOptions for simple chat mode:")
         fmt.Println("  --save <filename>             Save conversation log to a file")
         fmt.Println("\nNote: The --debug flag can be used with any command to show debug information.")
@@ -2388,6 +2387,54 @@ func main() {
             currentAgent.Name,
             "\u001b[0m", // Reset color
             currentAgent.Description)
+        os.Exit(0)
+    case "--uninstall":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Please specify an agent name to uninstall")
+            fmt.Println("\nUsage: chatty --uninstall \"Agent Name\"")
+            fmt.Println("\nNote: Only user-defined agents can be uninstalled.")
+            fmt.Println("To see available user-defined agents, use: chatty --list")
+            os.Exit(1)
+        }
+
+        agentName := os.Args[2]
+        
+        // Define colors
+        colorMagenta := "\u001b[1;35m"
+        colorRed := "\u001b[1;31m"
+        colorGreen := "\u001b[1;32m"
+        colorPurple := "\u001b[1;95m"
+        colorReset := "\u001b[0m"
+
+        // Try to uninstall the agent
+        if err := agents.UninstallAgent(agentName); err != nil {
+            if strings.Contains(err.Error(), "cannot uninstall built-in agent") {
+                fmt.Printf("\n%s🚫 Error:%s Cannot uninstall %s%s%s - it is a built-in agent\n", 
+                    colorRed, colorReset, colorMagenta, agentName, colorReset)
+                fmt.Println("\nOnly user-defined agents can be uninstalled.")
+                fmt.Printf("To see available user-defined agents, use: %schatty --list%s\n",
+                    colorPurple, colorReset)
+            } else if strings.Contains(err.Error(), "not found") {
+                fmt.Printf("\n%s🚫 Error:%s Agent %s%s%s not found\n", 
+                    colorRed, colorReset, colorMagenta, agentName, colorReset)
+                fmt.Printf("\nTo see available agents, use: %schatty --list%s\n",
+                    colorPurple, colorReset)
+            } else {
+                fmt.Printf("\n%s🚫 Error:%s %v\n", colorRed, colorReset, err)
+            }
+            os.Exit(1)
+        }
+
+        // Success message
+        fmt.Printf("\n%s✅ Success:%s Agent %s%s%s has been uninstalled\n", 
+            colorGreen, colorReset, colorMagenta, agentName, colorReset)
+        
+        // Show available actions
+        fmt.Println("\nQuick Actions:")
+        fmt.Printf("  • %sView available agents:%s chatty --list\n", 
+            colorPurple, colorReset)
+        fmt.Printf("  • %sInstall sample agents:%s chatty --list-more\n", 
+            colorPurple, colorReset)
         os.Exit(0)
     }
 

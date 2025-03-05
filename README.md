@@ -47,304 +47,181 @@ Copy the `chatty` binary to `/usr/local/bin`:
 sudo cp bin/chatty /usr/local/bin
 ```
 
-Start Chatty:
+Initialize Chatty:
 
 ```bash
 # First-time setup (required)
 chatty init
 ```
 
-Try one of the various modes:
+## 📖 Command Guide
+
+### 🎯 Basic Interactions
+
+Start with these essential commands to get familiar with Chatty:
 
 ```bash
-# Send a one-off message to the default agent (not a chat session)
+# Send a quick message (uses current agent)
 chatty "What can you do?"
 
-# Switch to a different agent
-chatty --select "Einstein"
+# List all available agents
+chatty --list
 
-# Then engage in impossible conversations
-chatty "Can you explain the quantum mechanics behind TikTok viral videos, or is it just pure sorcery?"
+# View current agent
+chatty --current
 
-# Start a direct chat with a specific agent
-chatty --with "Freud"
+# View agent details
+chatty --show "Einstein"
 
-# Group chat with multiple agents
-chatty --with "Shakespeare,Jane Austen,Gandalf"
+# Start a chat session
+chatty --with "Einstein"
 
-# Play games with your favorite historical figures
-chatty --with "Cleopatra,Asimov,Beethoven" --topic "Let's play Two Truths and a Lie" --auto
-
-# Let fate decide your conversation partners
-chatty --with-random 4 --topic "Let's have a completely unexpected discussion!" --auto
-
-# Use a text file as the conversation starter
-chatty --with "Plato,Aristotle" --topic-file ~/my_philosophy_questions.txt
-
-# Unlearn everything you know about any topic
-chatty --with "Zeus,Turing,Tux" --topic "Explain how the cloud works, wrong answers only" --auto
-
-# Plan spectacular events
-chatty --with "Shakespeare,Aristotle,Dracula" --topic "Let's plan the ultimate vampire-themed dinner party"
-
-# Brainstorm revolutionary business ideas
-chatty --with "Marx,Tesla,Sherlock Holmes" --topic "Pitch a revolutionary business idea that combines electricity, detective work, and communism"
+# Chat with a specific topic
+chatty --with "Shakespeare" --topic "Let's write a sonnet"
 ```
 
-## Available Agents
+### 🤝 Multi-Agent Conversations
 
-![Chatty Banner](images/chatty_ai_small_banner_01.png)
+Create dynamic group discussions:
+
+```bash
+# Start a group chat (interactive mode)
+chatty --with "Einstein,Newton,Darwin"      # Start without a specific topic
+chatty --with "Einstein,Newton,Darwin" --topic "Let's discuss gravity"
+
+# Random agent conversations
+chatty --with-random 3                      # Start with random agents
+chatty --with-random 3 --topic "Brainstorm crazy ideas"
+
+# Autonomous mode (agents chat among themselves)
+chatty --with "Shakespeare,Austen,Poe" --auto           # Auto mode without topic
+chatty --with "Shakespeare,Austen,Poe" --topic "Write a story" --auto
+
+# Limit conversation turns
+chatty --with-random 4 --turns 10                       # Random chat with turn limit
+chatty --with-random 4 --topic "What's the meaning of life?" --turns 10
+
+# Use a text file as conversation starter
+chatty --with "Plato,Aristotle" --topic-file ~/philosophy_questions.txt
+```
+
+### 👥 Agent Management
+
+Customize your agent roster:
+
+```bash
+# List available sample agents
+chatty --list-more
+
+# View sample agent details before installing
+chatty --show "sagan"
+
+# Install a new agent
+chatty --install "sagan"
+
+# Uninstall a user-defined agent
+chatty --uninstall "sagan"
+
+# Select an agent as current
+chatty --select "Einstein"
+
+# Clear chat history
+chatty --clear "Shakespeare"  # For specific agent
+chatty --clear all           # For all agents
+```
+
+### ⚙️ Additional Features
+
+Enhance your chat experience:
+
+```bash
+# Save conversation logs
+chatty --with "Einstein" --topic "Quantum mechanics" --save quantum_chat.txt
+
+# Use special characters in topics
+chatty --with "Marx" --topic "Why is \$100 worth less every year?"
+
+# Multi-language support
+# (Set language in ~/.chatty/config.json)
+chatty "¿Cómo estás hoy?"
+```
+
+## 🎭 Available Agents
 
 ### 💻 Built-in Agents
 
-Step into a world of extraordinary conversations with our diverse roster of [pre-installed agents](cmd/chatty/agents)! Chat with brilliant minds like **Einstein** about the mysteries of the universe, explore the art of code with **Ada**, or debate philosophy with **Aristotle** and **Plato**. Need technical help? **Tux** and **Nimble** are ready to assist with Linux and productivity. Want something different? Share stories with **Shakespeare**, investigate mysteries with **Sherlock Holmes**, or discuss revolution with **Marx**.
+Step into a world of extraordinary conversations with our diverse roster of [pre-installed agents](cmd/chatty/agents)! Chat with brilliant minds like **Einstein** about the mysteries of the universe, explore the art of code with **Ada**, or debate philosophy with **Aristotle** and **Plato**. Need technical help? **Tux** and **Nimble** are ready to assist with Linux and productivity.
 
 Each agent brings their unique perspective and expertise to the conversation. Use `chatty --list` to see all available agents and their specialties.
 
-### 🎭 Sample Personality Agents
+### 🎨 Sample Agents
 
-Want even more fascinating conversations? Discover our collection of over [50 additional sample personalities](cmd/chatty/agents/samples) ready to be brought to life! Explore the cosmos with **Carl Sagan**, unravel the mysteries of consciousness with **Sigmund Freud**, or dive into the depths of gothic literature with **Edgar Allan Poe**. Challenge your perspectives with **Nietzsche**'s philosophical provocations, or get cybersecurity insights from our **Security Expert**.
+Discover our collection of over [50 additional sample personalities](cmd/chatty/agents/samples) ready to be brought to life! Explore the cosmos with **Carl Sagan**, unravel the mysteries of consciousness with **Sigmund Freud**, or dive into the depths of gothic literature with **Edgar Allan Poe**.
 
-To start using these personalities:
+To explore sample agents:
 
-```bash
-# List all available sample agents
-chatty --list-more
-
-# View a sample agent's definition before installing
-chatty --show "sagan"
-
-# Add a sample agent to your collection (quick way)
-chatty --install "sagan"
-
-# Or manually copy the sample file (alternative way)
-cp ~/.chatty/agents/sagan.yaml.sample ~/.chatty/agents/sagan.yaml
-```
-
-The possibilities are endless - mix and match personalities to create unique conversations that span across time, disciplines, and perspectives!
+1. List available samples: `chatty --list-more`
+2. View agent details: `chatty --show "sagan"`
+3. Install an agent: `chatty --install "sagan"`
 
 ## 🎯 Cool Use Cases
 
 ### 🔮 Time-Traveling Discussions
 
 ```bash
-# First, set up your desired personality agents
+# Set up your desired agents
 chatty --install "sagan"
 chatty --install "hawking"
-chatty --install "captain_nemo"
+chatty --install "verne"
 
-# Then start your discussion
-chatty --with "Carl Sagan,Stephen Hawking,Captain Nemo" --topic "Let's explore the mysteries of space and sea - which frontier is more fascinating?"
+# Start an epic discussion
+chatty --with "Carl Sagan,Stephen Hawking,Jules Verne" --topic "Space exploration: past predictions vs current reality"
 ```
 
 ### 🎓 Learning & Exploration
 
 ```bash
-# Using built-in agents
-chatty --with "Ada,Nimble" --topic "How to organize a complex software project?"
+# Technical discussions
+chatty --with "Ada,Turing" --topic "The future of AI"
 
-# Using personality agents (after setting them up)
-chatty --with "Feynman,Marie Curie,Darwin" --topic "Explain how scientific discovery happens"
+# Scientific exploration
+chatty --with "Einstein,Curie,Tesla" --topic "Energy of the future"
+
+# Philosophy and ethics
+chatty --with "Socrates,Kant,Confucius" --topic "Modern ethical dilemmas"
 ```
 
-### 🎭 Entertainment & Creativity
+### 🎭 Creative Collaborations
 
 ```bash
-# Unlikely Collaborations
-chatty --with "Shakespeare,Mark Twain,Jane Austen" --topic "Write a story about time travel"
+# Literary mashups
+chatty --with "Shakespeare,Poe,Austen" --topic "Write a romantic gothic comedy"
 
-# Cultural Conversations
-chatty --with "Mozart,Louis Armstrong,Elvis Presley" --topic "Create a new musical genre"
+# Musical innovations
+chatty --with "Mozart,Armstrong,Lennon" --topic "Create a new musical genre"
 
-# Philosophical Debates
-chatty --with "Socrates,Kant,Albert Camus" --topic "Is social media making us happier?"
+# Art and technology
+chatty --with "Da Vinci,Tesla,Jobs" --topic "Design the next revolutionary device"
 ```
 
-## 💭 Chat Modes
+## 🌟 Pro Tips
 
-### 👤 Single Agent Conversations
+1. **Agent Selection**: Match agents with complementary expertise for richer discussions
+2. **Topic Framing**: Be specific in your topics to get more focused responses
+3. **History Management**: Clear chat history occasionally for fresh perspectives
+4. **Auto Mode**: Use `--auto` with `--turns` to control conversation length
+5. **Save Logs**: Use `--save` to keep records of particularly interesting discussions
 
-Have a one-on-one chat with any agent:
+## 📝 Configuration
 
-```bash
-# List available agents and their specialties
-chatty --list
+Chatty's configuration file is located at `~/.chatty/config.json`. Here you can customize:
 
-# List all available sample agents that can be installed
-chatty --list-more
+- Default agent
+- Language settings
+- Model preferences
+- Conversation guidelines
 
-# View the definition of any agent (built-in, user-defined, or sample)
-chatty --show "Einstein"
-chatty --show "sagan"  # Works for sample agents too
-
-# Add a sample agent to your collection
-chatty --install "sagan"
-
-# Choose your conversation partner
-chatty --select "Sherlock Holmes"
-
-# Get creative with your questions
-chatty "Analyze my coffee stains and deduce my morning routine"
-
-# Start a direct chat with a specific agent
-chatty --with "Einstein"
-
-# Start a direct chat with an initial topic
-chatty --with "Einstein" --topic "Explain relativity to a 5-year-old"
-
-# Save chat logs to a file
-chatty "What's the meaning of life?" --save meaning_of_life.txt
-
-# Check who you're currently talking to
-chatty --current
-
-# Clear chat history for a fresh start
-chatty --clear "Shakespeare"
-```
-
-**Note**: When using `--select` or `--with`, the agent name must exactly match the `name` field in the agent's YAML file. For example, if the YAML contains `name: "Marie Curie"`, you must use `--select "Marie Curie"` (including quotes if the name contains spaces).
-
-### 🤝 Multi-Agent Conversations
-
-Create interactive discussions between AI agents:
-
-```bash
-# Basic examples - comma-separated list of agents
-chatty --with "Ada,Tux"
-# You'll be prompted to enter a topic to start the conversation
-
-# Provide a topic directly
-chatty --with "Einstein,Newton,Darwin" --topic "Let's discuss gravity"
-
-# When an agent has multiple words in their name, include them in the comma-separated list
-chatty --with "Marie Curie,Einstein,Darwin" --topic "Discuss scientific method"
-chatty --with "Edgar Allan Poe,Mark Twain,Shakespeare" --topic "Write a story"
-
-# Random agent conversations - let fate decide!
-chatty --with-random 3
-# You'll be prompted to enter a topic to start the conversation
-
-# Random agents with a specific topic and autonomous mode
-chatty --with-random 5 --topic "Brainstorm crazy ideas" --auto
-
-# Limit the number of conversation turns
-chatty --with-random 4 --topic "What's the meaning of life?" --turns 10
-
-# Save conversation logs to a file
-# This is an experimental feature and performance may vary
-chatty --with "Einstein,Newton" --topic "Discuss gravity" --save gravity_discussion.txt
-chatty --with-random 3 --topic "Brainstorm ideas" --auto --save brainstorm.txt
-
-# More examples
-chatty --with "Ada,Tux,Nimble" --topic "How can we improve code quality?"
-chatty --with "Marie Curie,Ada Lovelace,Einstein" --topic "Women in science"
-chatty --with "Mozart,Louis Armstrong,Elvis Presley" --topic "Future of music"
-
-# Using special characters (escape with \)
-chatty --with "Ada,Tux" --topic "How to make \$100 last a month?"
-
-# Use a text file as the topic message
-chatty --with "Shakespeare,Tolkien" --topic-file story_prompt.txt
-chatty --with-random 3 --topic-file research_topic.txt
-
-# Auto mode and turn limits work the same way
-chatty --with "Einstein,Newton" --topic "Discuss gravity" --auto
-chatty --with "Marie Curie,Einstein" --topic "Future of physics" --turns 5
-```
-
-**Note**: When using `--with`, provide a comma-separated list of agent names. For multi-word agent names, include them in the list with the commas.
-
-When using `--with-random`, just specify the number of agents (between 2 and 15) you want in the conversation. The agents will be randomly selected from both built-in and user-defined agents.
-
-You can provide the topic message in two ways:
-
-- Using `--topic "message"` for direct text input
-- Using `--topic-file path` to read the message from a text file
-
-If you don't provide a topic with the `--topic` or `--topic-file` flags in interactive mode, you'll be prompted to enter one when the conversation starts.
-
-### How Conversations Work
-
-1. First turn starts with your topic message
-2. Each agent responds in sequence (no duplicates allowed)
-3. After each turn:
-   - In normal mode: you're prompted for a new message
-   - In auto mode (--auto): agents continue the conversation automatically
-4. Conversation ends when:
-   - Specified number of turns is reached (if --turns used)
-   - You press Ctrl+C
-   - In normal mode: you enter an empty message
-   - In auto mode: you press Ctrl+C to stop
-
-## ⚙️ Configuration
-
-Settings are stored in `~/.chatty/config.json`. The default configuration includes only required fields:
-
-```json
-{
-  "current_agent": "chatty",
-  "language_code": "en-US",
-  "model": "llama3.2"
-}
-```
-
-### Available Settings
-
-Required fields:
-
-- `current_agent`: Active AI personality (defaults to "chatty")
-- `language_code`: Language for interactions (default: "en-US")
-- `model`: Ollama model to use (default: "llama3.2")
-
-Optional fields:
-
-- `base_guidelines`: Override the default conversation style and behavior for all agents
-- `interactive_guidelines`: Guidelines for conversations with human participation (default mode)
-- `autonomous_guidelines`: Guidelines for autonomous agent conversations (--auto mode)
-
-Example with optional fields:
-
-```json
-{
-  "current_agent": "chatty",
-  "language_code": "en-US",
-  "model": "llama3.2",
-  "base_guidelines": "Be professional and formal in your responses. Focus on accuracy and clarity.",
-  "interactive_guidelines": "Always speak in first person and Acknowledge others before adding your view",
-  "autonomous_guidelines": "Always speak in first person and Drive the conversation with questions"
-}
-```
-
-The guidelines settings control how agents behave in different conversation modes:
-
-- `interactive_guidelines`: Used in regular conversations where humans participate. This is the default mode when using `--with` without the `--auto` flag. These guidelines encourage agents to interact with both human users and other agents.
-
-- `autonomous_guidelines`: Used only when the `--auto` flag is enabled. These guidelines are specifically designed for agent-to-agent conversations without human participation, encouraging more autonomous discussion between the agents.
-
-You can modify these guidelines to create different conversation dynamics or enforce specific interaction patterns. For example, you might want to make autonomous conversations more focused on debate, or interactive conversations more educational.
-
-### Language Support
-
-Chatty supports any language that your Ollama model can understand. Use the following format in your config.json:
-
-Example language codes:
-
-- English: `en-US`
-- Spanish: `es-ES`
-- French: `fr-FR`
-- German: `de-DE`
-- Italian: `it-IT`
-- Portuguese: `pt-BR`
-- Japanese: `ja-JP`
-- Korean: `ko-KR`
-- Chinese: `zh-CN`
-
-To change language:
-
-1. Edit `language_code` in config.json using the appropriate language code format (xx-XX)
-2. Clear history: `chatty --clear all`
-
-**Note**: Clear history after changing language to ensure consistent responses.
+For detailed configuration options, use `chatty --show "Chatty"`.
 
 ## 🛠️ Creating Custom Agents
 
