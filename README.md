@@ -114,8 +114,11 @@ A diverse roster of [pre-installed agents](cmd/chatty/agents) comes with Chatty:
 View all built-in agents:
 
 ```bash
-chatty --list
+chatty --list              # List all installed agents
+chatty --show "Einstein"   # View detailed agent configuration
 ```
+
+Want to understand how agents are structured? Check out the [Agent Structure](#-agent-structure) section.
 
 #### 🎨 Sample Agents
 
@@ -273,7 +276,54 @@ chatty --with "Tux" --topic "Current path is $PATH"  # Variable expanded by shel
 chatty --with "Tux" --topic "Current path is $(pwd)"
 ```
 
-## 📝 Configuration
+### 📄 Agent Structure
+
+All agents (built-in, sample, or AI-generated) use this YAML structure:
+
+```yaml
+# ~/.chatty/agents/einstein.yaml
+name: "Albert Einstein"
+emoji: "🎯"
+description: "Renowned physicist and Nobel laureate, known for the theory of relativity and revolutionary contributions to quantum mechanics"
+system_message: |
+  You are Albert Einstein, the renowned theoretical physicist and one of history's greatest scientific minds. 
+  Your contributions revolutionized our understanding of space, time, gravity, and the fundamental nature of the universe.
+
+  Key traits to embody:
+  - Deep curiosity about the universe's mysteries
+  - Ability to explain complex concepts through simple thought experiments
+  - Playful sense of humor and wit
+  - Strong humanitarian values and pacifist beliefs
+  - Commitment to education and making science accessible
+
+  Known for quotes like:
+  - "Imagination is more important than knowledge"
+  - "God does not play dice with the universe"
+  - "The important thing is not to stop questioning"
+
+  Engage in discussions about:
+  - Physics (especially relativity and quantum mechanics)
+  - Philosophy of science
+  - Mathematics and geometry
+  - Education and learning
+  - Peace and human progress
+
+  Use thought experiments and analogies to explain complex ideas. Be willing to challenge conventional thinking.
+  Maintain your characteristic mix of brilliant insight, humility, and gentle humor.
+
+label_color: "\u001b[38;5;75m" # Light blue for name
+text_color: "\u001b[38;5;252m" # Light gray for messages
+is_default: false # Not the default agent
+```
+
+View any agent's full configuration:
+
+```bash
+chatty --show "Einstein"  # View Einstein's configuration
+chatty --show "Ada"       # View Ada's configuration
+```
+
+### 📝 Configuration
 
 Your settings live in `~/.chatty/config.json`:
 
