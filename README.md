@@ -23,6 +23,7 @@ Chatty makes it possible with just a simple description!
 - 🤖 **Autonomous Mode**: Watch your agents engage in discussions on their own
 - 📝 **Persistent Memory**: Agents remember your previous conversations
 - 🌍 **Multi-Language Support**: Chat in your preferred language
+- 🌟 **Community Store**: Share and discover custom agents created by the community
 
 ![Chatty Screenshot](images/chatty_ai_screenshot_01.png)
 
@@ -73,7 +74,7 @@ chatty --clear "Agent Name"    # Clear agent's chat history
 chatty --clear all            # Clear all chat histories
 ```
 
-### �� AI Agent Builder
+### 🎨 AI Agent Builder
 
 Create any AI personality you can imagine:
 
@@ -95,6 +96,29 @@ The AI will automatically generate:
 - Fitting emoji
 
 You can then review and customize everything, and immediately start chatting with your new agent!
+
+### 🏪 Community Store
+
+Discover and share AI agents with the community:
+
+```bash
+# Browse the store
+chatty --store                  # List available community agents
+chatty --show "Agent Name"     # View agent details before installing
+
+# Install agents
+chatty --install "Agent Name"  # Install an agent from the store
+
+# Share your creations
+chatty --share "Agent Name"    # Share your custom agent with the community
+```
+
+**Sharing Your Agents:**
+
+1. Create a custom agent using `--build`
+2. Test and refine your agent
+3. Share with the community using `--share`
+4. Your agent will be submitted to the Community Store for others to enjoy!
 
 ### 🎭 Pre-built Agents
 
@@ -168,7 +192,7 @@ chatty --with-random 4 --topic "Future of AI" --turns 20 --auto
 # Creative Sessions
 chatty --with "Mozart,Beethoven,Bach" \
   --topic "Compose a new symphony" \
-  -- auto
+  --auto
 
 # Educational Discussions
 chatty --with "Einstein,Feynman,Bohr" \
@@ -240,7 +264,6 @@ chatty --with "Turing" --topic-file "questions.txt"  # Use file as conversation 
 chatty --with Einstein --debug # Enable debug mode
 
 # Save conversations
-# IMPORTANT: Experimental feature! Performance may be affected.
 chatty --with "Shakespeare,Feynman,Tesla" --save "chat_log.txt"
 chatty --with-random 3 --topic "Innovation" --save "brainstorm.txt"
 
@@ -337,6 +360,7 @@ We welcome contributions! Whether it's:
 - Suggesting features
 - Improving documentation
 - Adding new agents
+- Sharing your custom agents with the community
 
 ## 📄 License
 
