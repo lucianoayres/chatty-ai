@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chatty/cmd/chatty/agents"
+	"chatty/cmd/chatty/builder"
 )
 
 type Message struct {
@@ -1579,6 +1580,13 @@ func main() {
 
     // Handle special commands
     switch os.Args[1] {
+    case "--build":
+        handler := builder.NewHandler(debugMode)
+        if err := handler.HandleBuildCommand(os.Args[2:]); err != nil {
+            fmt.Printf("Error: %v\n", err)
+            os.Exit(1)
+        }
+        return
     case "--with":
         if len(os.Args) < 3 {
             fmt.Println("Usage: chatty --with <agent_name> or <agent1>,<agent2>,... [options]")

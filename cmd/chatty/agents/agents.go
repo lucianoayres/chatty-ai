@@ -494,7 +494,9 @@ func IsValidAgent(name string) bool {
 func GetHistoryFileName(agentName string) string {
 	// Get the proper case for the agent name from the config
 	agent := GetAgentConfig(agentName)
-	return fmt.Sprintf("chat_history_%s.json", strings.ToLower(agent.Name))
+	// Convert spaces to underscores and make lowercase
+	safeAgentName := strings.ReplaceAll(strings.ToLower(agent.Name), " ", "_")
+	return fmt.Sprintf("chat_history_%s.json", safeAgentName)
 }
 
 // CopySampleAgents copies sample agent configurations to user directory
