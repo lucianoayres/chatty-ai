@@ -8,6 +8,7 @@ Transform your terminal into a vibrant AI-powered workspace where historical fig
 
 ## ✨ What Makes Chatty Special?
 
+- 🎨 **AI Agent Builder**: Create custom AI agents with natural language - just describe what you want!
 - 🎭 **Rich Character Roster**: From Shakespeare to Einstein, Plato to Marie Curie - engage with personalities who shaped history
 - 🗣️ **Multi-Agent Conversations**: Create unique discussions between up to 15 different characters
 - 🎲 **Random Conversations**: Let fate decide your conversation partners for unexpected and exciting discussions
@@ -54,97 +55,73 @@ Initialize Chatty:
 chatty init
 ```
 
-## 📖 Command Guide
+## 🎨 AI Agent Builder (New!)
 
-### 🎯 Basic Interactions
-
-Start with these essential commands to get familiar with Chatty:
+Create your own AI agents with natural language! Our revolutionary AI Agent Builder lets you bring any personality to life just by describing them. No coding required - it's like magic! ✨
 
 ```bash
-# Send a quick message (uses current agent)
-chatty "What can you do?"
+# Create a new AI agent with a simple description
+chatty --build "A witty detective inspired by Sherlock Holmes, who solves coding mysteries and debugging challenges with clever deductions and programming expertise"
 
-# List all available agents
-chatty --list
-
-# View current agent
-chatty --current
-
-# View agent details
-chatty --show "Einstein"
-
-# Start a chat session
-chatty --with "Einstein"
-
-# Chat with a specific topic
-chatty --with "Shakespeare" --topic "Let's write a sonnet"
+# The builder will:
+# 1. Generate the perfect system message
+# 2. Choose an appropriate emoji
+# 3. Create a concise description
+# 4. Let you customize colors and appearance
+# 5. Start chatting immediately!
 ```
 
-### 🤝 Multi-Agent Conversations
+### 🌟 Example Agent Descriptions
 
-Create dynamic group discussions:
+Create specialized agents for any task:
 
 ```bash
-# Start a group chat (interactive mode)
-chatty --with "Einstein,Newton,Darwin"      # Start without a specific topic
-chatty --with "Einstein,Newton,Darwin" --topic "Let's discuss gravity"
+# Technical Expert
+chatty --build "A senior DevOps engineer who's an expert in Docker, Kubernetes, and cloud infrastructure, with a focus on best practices and security"
 
-# Random agent conversations
-chatty --with-random 3                      # Start with random agents
-chatty --with-random 3 --topic "Brainstorm crazy ideas"
+# Creative Assistant
+chatty --build "A creative writing coach who combines the wit of Oscar Wilde with the storytelling wisdom of Joseph Campbell"
 
-# Autonomous mode (agents chat among themselves)
-chatty --with "Shakespeare,Austen,Poe" --auto           # Auto mode without topic
-chatty --with "Shakespeare,Austen,Poe" --topic "Write a story" --auto
+# Learning Companion
+chatty --build "A patient and encouraging math tutor who explains complex concepts using real-world examples and visual analogies"
 
-# Limit conversation turns
-chatty --with-random 4 --turns 10                       # Random chat with turn limit
-chatty --with-random 4 --topic "What's the meaning of life?" --turns 10
-
-# Use a text file as conversation starter
-chatty --with "Plato,Aristotle" --topic-file ~/philosophy_questions.txt
+# Productivity Guru
+chatty --build "A productivity expert who combines GTD principles with modern digital tools, helping users optimize their workflow with practical advice"
 ```
 
-### 👥 Agent Management
+### 💡 Tips for Great Agents
 
-Customize your agent roster:
+1. **Be Specific**: Include expertise areas, personality traits, and communication style
+2. **Add Context**: Mention inspirations or role models for the agent's behavior
+3. **Define Purpose**: Clearly state what tasks or topics the agent should excel at
+4. **Include Tone**: Specify if you want the agent to be formal, casual, humorous, etc.
 
-```bash
-# List available sample agents
-chatty --list-more
+### ✨ Builder Features
 
-# View sample agent details before installing
-chatty --show "sagan"
+- **Interactive Creation**: Step-by-step process with live previews
+- **Smart Defaults**: AI-powered suggestions for all agent attributes
+- **Instant Testing**: Start chatting with your agent immediately after creation
+- **Easy Editing**: Fine-tune any aspect of your agent through an intuitive interface
+- **Color Customization**: Choose from a beautiful palette of colors for a unique look
 
-# Install a new agent
-chatty --install "sagan"
+### 🎯 Example Workflow
 
-# Uninstall a user-defined agent
-chatty --uninstall "sagan"
+1. **Describe Your Agent**:
 
-# Select an agent as current
-chatty --select "Einstein"
+   ```bash
+   chatty --build "A friendly Python mentor who explains code like Bob Ross painted - making complex concepts feel simple and happy accidents into learning opportunities"
+   ```
 
-# Clear chat history
-chatty --clear "Shakespeare"  # For specific agent
-chatty --clear all           # For all agents
-```
+2. **Review & Customize**:
 
-### ⚙️ Additional Features
+   - Fine-tune the generated name, emoji, and description
+   - Edit the system message if needed
+   - Choose custom colors for a unique appearance
 
-Enhance your chat experience:
-
-```bash
-# Save conversation logs
-chatty --with "Einstein" --topic "Quantum mechanics" --save quantum_chat.txt
-
-# Use special characters in topics
-chatty --with "Marx" --topic "Why is \$100 worth less every year?"
-
-# Multi-language support
-# (Set language in ~/.chatty/config.json)
-chatty "¿Cómo estás hoy?"
-```
+3. **Choose Your Next Step**:
+   - Start chatting immediately
+   - Save and set as default
+   - Save and exit
 
 ## 🎭 Available Agents
 
@@ -224,6 +201,34 @@ Chatty's configuration file is located at `~/.chatty/config.json`. Here you can 
 For detailed configuration options, use `chatty --show "Chatty"`.
 
 ## 🛠️ Creating Custom Agents
+
+Chatty offers two ways to create custom agents:
+
+### 1. 🎨 AI Agent Builder (Recommended)
+
+The easiest and most intuitive way to create agents:
+
+```bash
+# Create with a simple description
+chatty --build "Your agent description here"
+
+# Examples:
+chatty --build "A quantum physics professor who explains complex concepts using cat memes and pop culture references"
+chatty --build "A wise gardening expert combining traditional knowledge with modern sustainable practices"
+```
+
+### 2. 📝 Manual Configuration
+
+For those who prefer direct YAML editing:
+
+```yaml
+name: "Agent Name"
+system_message: |
+  You are [description]...
+emoji: "🤖"
+label_color: "\u001b[38;5;75m" # Blue
+text_color: "\u001b[38;5;252m" # Light gray
+```
 
 Learn from examples:
 

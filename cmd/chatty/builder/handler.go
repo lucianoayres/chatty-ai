@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -90,7 +90,7 @@ func startAnimation() *Animation {
 		for {
 			select {
 			case <-anim.stopChan:
-				fmt.Printf("\r%s\r", strings.Repeat(" ", 80)) // Clear the line
+				fmt.Printf("\r%s\r", strings.Repeat(" ", 2)) // Clear the line with just 2 spaces
 				return
 			default:
 				// Update the prefix with current frame
@@ -106,6 +106,11 @@ func startAnimation() *Animation {
 					// Erase the current message character by character
 					if len(currentMessage) > 0 {
 						currentMessage = currentMessage[:len(currentMessage)-1]
+						// Clear the entire line and reprint
+						fmt.Printf("\r%s\r%s%s", 
+							strings.Repeat(" ", len(prefix) + len(currentMessage) + 2),
+							prefix,
+							currentMessage)
 						time.Sleep(15 * time.Millisecond) // Faster backspace speed
 					} else {
 						// When fully erased, prepare for the next message
@@ -124,16 +129,15 @@ func startAnimation() *Animation {
 					targetMessage := messages[messageIndices[currentIndex]]
 					if len(currentMessage) < len(targetMessage) {
 						currentMessage = targetMessage[:len(currentMessage) + 1]
+						// Clear the entire line and reprint
+						fmt.Printf("\r%s\r%s%s", 
+							strings.Repeat(" ", len(prefix) + len(currentMessage) + 2),
+							prefix,
+							currentMessage)
 						time.Sleep(30 * time.Millisecond) // Normal typing speed
 					}
 				}
 
-				// Clear the line and print the current frame and message
-				fmt.Printf("\r%s\r%s%s", 
-					strings.Repeat(" ", 80),
-					prefix,
-					currentMessage)
-				
 				frameIndex = (frameIndex + 1) % len(frames)
 				if !isErasing && len(currentMessage) == len(messages[messageIndices[currentIndex]]) {
 					time.Sleep(80 * time.Millisecond) // Normal spinner speed
@@ -183,90 +187,209 @@ func readUserInput(prompt string, defaultValue string) string {
 	return input
 }
 
-// readColorInput reads a color code from user input
-func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
-	colors := map[string]string{
-		"Blue":    "\u001b[38;5;39m",
-		"Green":   "\u001b[38;5;82m",
-		"Purple":  "\u001b[38;5;171m",
-		"Orange":  "\u001b[38;5;208m",
-		"Red":     "\u001b[38;5;196m",
-		"Cyan":    "\u001b[38;5;51m",
-		"Yellow":  "\u001b[38;5;226m",
-		"Pink":    "\u001b[38;5;213m",
-		"White":   "\u001b[38;5;255m",
-		"Gray":    "\u001b[38;5;245m",
-	}
+// menuOption represents a selectable menu item
+type menuOption struct {
+	label string
+	value string
+}
 
-	// Convert map to sorted slice for consistent ordering
+// readKey reads a single keystroke from stdin
+func readKey() ([]byte, error) {
+	// Put terminal in raw mode
+	exec.Command("stty", "-F", "/dev/tty", "raw").Run()
+	defer exec.Command("stty", "-F", "/dev/tty", "cooked").Run()
+
+	buffer := make([]byte, 3)
+	n, err := os.Stdin.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer[:n], nil
+}
+
+// showLightBarMenu displays a menu with a light bar selector
+func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int, error) {
+	currentIndex := defaultIndex
+	
+	// Store cursor position
+	fmt.Print("\033[s")
+	
+	for {
+		// Return to stored position and clear to end of screen
+		fmt.Print("\033[u\033[J")
+		
+		// Show title with a separator line
+		fmt.Printf("\n%s%s%s\n", colorSection, title, colorReset)
+		fmt.Printf("%s%s%s\n\n", colorSection, strings.Repeat("─", len(title)), colorReset)
+
+		// Display options
+		for i, opt := range options {
+			if i == currentIndex {
+				// Highlighted option
+				fmt.Printf(" %s▶ %s%s\n", colorHighlight, opt.label, colorReset)
+			} else {
+				// Normal option
+				fmt.Printf("   %s\n", opt.label)
+			}
+		}
+
+		// Show navigation help
+		fmt.Printf("\n%s↑/↓: Navigate • Enter: Select • Esc: Cancel%s", colorPrompt, colorReset)
+
+		// Read keystroke
+		key, err := readKey()
+		if err != nil {
+			return -1, err
+		}
+
+		// Handle key press
+		if len(key) == 1 {
+			switch key[0] {
+			case 13: // Enter
+				fmt.Print("\033[u\033[J") // Clear menu before returning
+				return currentIndex, nil
+			case 27: // Escape
+				fmt.Print("\033[u\033[J") // Clear menu before returning
+				return -1, nil
+			}
+		} else if len(key) == 3 {
+			switch key[2] {
+			case 65: // Up arrow
+				if currentIndex > 0 {
+					currentIndex--
+				}
+			case 66: // Down arrow
+				if currentIndex < len(options)-1 {
+					currentIndex++
+				}
+			}
+		}
+	}
+}
+
+// editAgentFields allows the user to edit agent fields through a light bar menu
+func editAgentFields(agent *AgentSchema) bool {
+	for {
+		// Show current configuration without clearing the screen
+		showAgentFields(agent)
+
+		// Prepare menu options
+		options := []menuOption{
+			{label: "Edit Name", value: "name"},
+			{label: "Edit Emoji", value: "emoji"},
+			{label: "Edit Description", value: "description"},
+			{label: "Edit System Message", value: "system"},
+			{label: "Continue to Appearance", value: "continue"},
+		}
+
+		// Show menu and get selection
+		selected, err := showLightBarMenu("🛠️  Edit Options", options, 0)
+		if err != nil || selected == -1 {
+			return false
+		}
+
+		// Handle selection
+		switch options[selected].value {
+		case "continue":
+			return true
+		case "name":
+			// Clear screen for editing
+			fmt.Print("\033[H\033[2J")
+			fmt.Printf("\n%s✏️  Edit Name%s\n", colorSection, colorReset)
+			fmt.Printf("%s════════════%s\n\n", colorSection, colorReset)
+			fmt.Printf("Current name: %s%s%s\n", colorValue, agent.Name, colorReset)
+			agent.Name = readUserInput(colorPrompt+"New name (Enter to keep current)"+colorReset, agent.Name)
+		case "emoji":
+			// Clear screen for editing
+			fmt.Print("\033[H\033[2J")
+			fmt.Printf("\n%s✏️  Edit Emoji%s\n", colorSection, colorReset)
+			fmt.Printf("%s═════════════%s\n\n", colorSection, colorReset)
+			fmt.Printf("Current emoji: %s%s%s\n", colorValue, agent.Emoji, colorReset)
+			agent.Emoji = readUserInput(colorPrompt+"New emoji (Enter to keep current)"+colorReset, agent.Emoji)
+		case "description":
+			// Clear screen for editing
+			fmt.Print("\033[H\033[2J")
+			fmt.Printf("\n%s✏️  Edit Description%s\n", colorSection, colorReset)
+			fmt.Printf("%s══════════════════%s\n\n", colorSection, colorReset)
+			fmt.Printf("Current description: %s%s%s\n", colorValue, agent.Description, colorReset)
+			agent.Description = readUserInput(colorPrompt+"New description (Enter to keep current)"+colorReset, agent.Description)
+		case "system":
+			// Clear screen for editing
+			fmt.Print("\033[H\033[2J")
+			fmt.Printf("\n%s✏️  Edit System Message%s\n", colorSection, colorReset)
+			fmt.Printf("%s═══════════════════%s\n\n", colorSection, colorReset)
+			fmt.Printf("%sCurrent system message:%s\n", colorPrompt, colorReset)
+			fmt.Printf("%s%s%s\n", colorValue, agent.SystemMessage, colorReset)
+			agent.SystemMessage = readMultilineInput(colorPrompt+"New system message (Enter to keep current)"+colorReset, agent.SystemMessage)
+		}
+	}
+}
+
+// readColorInput reads a color code using a light bar menu
+func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
 	type colorOption struct {
 		name string
 		code string
 	}
+
 	colorOptions := []colorOption{
-		{"Blue", colors["Blue"]},
-		{"Green", colors["Green"]},
-		{"Purple", colors["Purple"]},
-		{"Orange", colors["Orange"]},
-		{"Red", colors["Red"]},
-		{"Cyan", colors["Cyan"]},
-		{"Yellow", colors["Yellow"]},
-		{"Pink", colors["Pink"]},
-		{"White", colors["White"]},
-		{"Gray", colors["Gray"]},
+		{"Blue", "\u001b[38;5;39m"},
+		{"Green", "\u001b[38;5;82m"},
+		{"Purple", "\u001b[38;5;171m"},
+		{"Orange", "\u001b[38;5;208m"},
+		{"Red", "\u001b[38;5;196m"},
+		{"Cyan", "\u001b[38;5;51m"},
+		{"Yellow", "\u001b[38;5;226m"},
+		{"Pink", "\u001b[38;5;213m"},
+		{"White", "\u001b[38;5;255m"},
+		{"Gray", "\u001b[38;5;245m"},
 	}
 
-	for {
-		fmt.Print("\033[H\033[2J") // Clear screen
-		
+	// Convert color options to menu options with preview
+	menuOptions := make([]menuOption, len(colorOptions))
+	for i, color := range colorOptions {
 		if isLabelColor {
-			fmt.Printf("\n🎨 Choose a color for the agent's name:\n\n")
-			// Show preview of current name with each color
-			for i, color := range colorOptions {
-				fmt.Printf("%d. %s %s%s\u001b[0m\n", 
-					i+1,
+			// Preview for label color
+			menuOptions[i] = menuOption{
+				label: fmt.Sprintf("%s %s%s%s",
 					agent.Emoji,
 					color.code,
-					agent.Name)
+					agent.Name,
+					colorReset),
+				value: color.code,
 			}
 		} else {
-			fmt.Printf("\n🎨 Choose a color for the agent's messages:\n\n")
-			// Show preview of current message with each color
-			for i, color := range colorOptions {
-				fmt.Printf("%d. %s %s%s\u001b[0m: %s%s\u001b[0m\n",
-					i+1,
+			// Preview for text color
+			menuOptions[i] = menuOption{
+				label: fmt.Sprintf("%s %s%s%s: %s%s%s",
 					agent.Emoji,
 					selectedLabelColor,
 					agent.Name,
+					colorReset,
 					color.code,
-					"Hello! I am your AI assistant.")
+					"Hello! I am your AI assistant.",
+					colorReset),
+				value: color.code,
 			}
 		}
-
-		// Show current selection if any
-		if defaultValue != "" {
-			fmt.Printf("\nCurrent selection: %s%s\u001b[0m\n", defaultValue, "■■■■")
-		}
-
-		// Prompt for selection
-		fmt.Printf("\nSelect a color (1-%d, Enter for default): ", len(colorOptions))
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		// Handle default value
-		if input == "" {
-			return defaultValue
-		}
-
-		// Parse number
-		if num, err := strconv.Atoi(input); err == nil && num > 0 && num <= len(colorOptions) {
-			return colorOptions[num-1].code
-		}
-
-		fmt.Printf("Please enter a number between 1 and %d\n", len(colorOptions))
-		time.Sleep(2 * time.Second) // Give time to read the error message
 	}
+
+	// Find default index
+	defaultIndex := 0
+	for i, opt := range colorOptions {
+		if opt.code == defaultValue {
+			defaultIndex = i
+			break
+		}
+	}
+
+	title := "🎨 Choose a color for the agent's " + (map[bool]string{true: "name", false: "messages"})[isLabelColor]
+	selected, err := showLightBarMenu(title, menuOptions, defaultIndex)
+	if err != nil || selected == -1 {
+		return defaultValue
+	}
+
+	return menuOptions[selected].value
 }
 
 // showColorExamples displays example ANSI colors
@@ -296,59 +419,6 @@ func showAgentFields(agent *AgentSchema) {
 		colorValue, agent.SystemMessage, colorReset)
 }
 
-// editAgentFields allows the user to edit agent fields through a menu
-func editAgentFields(agent *AgentSchema) bool {
-	for {
-		fmt.Print("\033[H\033[2J") // Clear screen
-		showAgentFields(agent)
-		
-		fmt.Printf("\n%s🛠️  Edit Options%s\n", colorSection, colorReset)
-		fmt.Printf("%s═════════════%s\n", colorSection, colorReset)
-		fmt.Printf("\n%sChoose a field to edit (1-4) or press Enter to continue with appearance:%s\n", colorPrompt, colorReset)
-		fmt.Printf("%s1)%s Name\n", colorHighlight, colorReset)
-		fmt.Printf("%s2)%s Emoji\n", colorHighlight, colorReset)
-		fmt.Printf("%s3)%s Description\n", colorHighlight, colorReset)
-		fmt.Printf("%s4)%s System Message\n", colorHighlight, colorReset)
-		
-		fmt.Printf("\nChoice: ")
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		
-		if input == "" {
-			return true // Continue to appearance configuration
-		}
-		
-		choice, err := strconv.Atoi(input)
-		if err != nil || choice < 1 || choice > 4 {
-			fmt.Printf("%sInvalid choice. Please enter a number between 1 and 4.%s\n", colorAccent, colorReset)
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		
-		// Show current value and prompt for edit
-		fmt.Print("\033[H\033[2J") // Clear screen
-		fmt.Printf("%s📝 Edit Field%s\n", colorSection, colorReset)
-		fmt.Printf("%s════════════%s\n\n", colorSection, colorReset)
-		
-		switch choice {
-		case 1:
-			fmt.Printf("Current name: %s%s%s\n", colorValue, agent.Name, colorReset)
-			agent.Name = readUserInput(colorPrompt+"New name (Enter to keep current)"+colorReset, agent.Name)
-		case 2:
-			fmt.Printf("Current emoji: %s%s%s\n", colorValue, agent.Emoji, colorReset)
-			agent.Emoji = readUserInput(colorPrompt+"New emoji (Enter to keep current)"+colorReset, agent.Emoji)
-		case 3:
-			fmt.Printf("Current description: %s%s%s\n", colorValue, agent.Description, colorReset)
-			agent.Description = readUserInput(colorPrompt+"New description (Enter to keep current)"+colorReset, agent.Description)
-		case 4:
-			fmt.Printf("%sCurrent system message:%s\n", colorPrompt, colorReset)
-			fmt.Printf("%s%s%s\n", colorValue, agent.SystemMessage, colorReset)
-			agent.SystemMessage = readMultilineInput(colorPrompt+"New system message (Enter to keep current)"+colorReset, agent.SystemMessage)
-		}
-	}
-}
-
 // HandleBuildCommand processes the build command
 func (h *Handler) HandleBuildCommand(args []string) error {
 	if len(args) < 1 {
@@ -358,8 +428,9 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	// Get the agent description
 	description := strings.Join(args, " ")
 
-	// Clear screen and show welcome message
-	fmt.Print("\033[H\033[2J") // Clear screen
+	// Clear screen when entering builder mode
+	fmt.Print("\033[H\033[2J")
+	
 	fmt.Printf("%s🎨 Agent Builder%s\n", colorTitle, colorReset)
 	fmt.Printf("%s══════════════%s\n", colorTitle, colorReset)
 	fmt.Printf("\n%s📝 Creating a new agent based on your description:%s\n", colorSection, colorReset)
@@ -376,7 +447,28 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	}
 
 	// Generate the initial agent configuration
-	agent, err := h.builder.BuildAgent(description)
+	var agent *AgentSchema
+	var err error
+	maxRetries := 3
+	
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if h.debug {
+			fmt.Printf("\n%s🔄 Debug Mode: Attempt %d of %d...%s\n", colorAccent, attempt, maxRetries, colorReset)
+		}
+		
+		agent, err = h.builder.BuildAgent(description)
+		if err == nil {
+			break // Success, exit retry loop
+		}
+		
+		if attempt < maxRetries {
+			if h.debug {
+				fmt.Printf("\n%s❌ Debug Mode: Attempt %d failed: %v%s\n", colorAccent, attempt, err, colorReset)
+				fmt.Printf("%s⏳ Debug Mode: Retrying in 2 seconds...%s\n", colorAccent, colorReset)
+			}
+			time.Sleep(2 * time.Second) // Wait before retrying
+		}
+	}
 	
 	// Stop the animation if it was started
 	if anim != nil {
@@ -385,13 +477,13 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 
 	if err != nil {
 		if h.debug {
-			fmt.Printf("\n%s❌ Debug Mode: Generation failed:%s\n%v\n", colorAccent, colorReset, err)
+			fmt.Printf("\n%s❌ Debug Mode: All attempts failed:%s\n%v\n", colorAccent, colorReset, err)
 		}
-		return fmt.Errorf("failed to build agent: %v", err)
+		return fmt.Errorf("failed to build agent after %d attempts: %v", maxRetries, err)
 	}
 
 	if h.debug {
-		fmt.Printf("\n%s✅ Debug Mode: Initial configuration generated%s\n", colorAccent, colorReset)
+		fmt.Printf("\n%s✅ Debug Mode: Agent configuration generated successfully%s\n", colorAccent, colorReset)
 		yamlData, _ := yaml.Marshal(agent)
 		fmt.Printf("\n%s%s%s\n", colorValue, string(yamlData), colorReset)
 	}
@@ -425,33 +517,66 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	filename := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "_")) + ".yaml"
 	outputPath := filepath.Join(agentsDir, filename)
 
-	// Confirm before saving
-	fmt.Printf("\n%s💾 Save Agent%s\n", colorSection, colorReset)
+	// Show save options menu
+	fmt.Printf("\n%s💾 Next Steps%s\n", colorSection, colorReset)
 	fmt.Printf("%s═══════════%s\n", colorSection, colorReset)
-	fmt.Printf("%sThe agent will be saved to: %s%s%s\n", 
+	fmt.Printf("%sAgent will be saved to: %s%s%s\n\n", 
 		colorPrompt, 
 		colorValue, 
 		outputPath,
 		colorReset)
-	if !confirmAction(colorPrompt + "Would you like to save this agent?" + colorReset) {
+
+	options := []menuOption{
+		{label: fmt.Sprintf("💬 Save & Chat with %s%s%s", colorValue, agent.Name, colorReset), value: "chat"},
+		{label: "💾 Save & Exit", value: "save"},
+		{label: "❌ Do not save & Exit", value: "cancel"},
+	}
+
+	selected, err := showLightBarMenu("Choose what to do next", options, 0)
+	if err != nil || selected == -1 {
 		fmt.Printf("\n%s❌ Agent creation cancelled.%s\n", colorAccent, colorReset)
 		return nil
 	}
 
-	// Save the agent configuration
-	if err := h.builder.SaveAgent(agent, outputPath); err != nil {
-		return fmt.Errorf("failed to save agent: %v", err)
-	}
+	switch options[selected].value {
+	case "cancel":
+		fmt.Printf("\n%s❌ Agent creation cancelled.%s\n", colorAccent, colorReset)
+		return nil
+	case "chat", "save":
+		// Save the agent configuration
+		if err := h.builder.SaveAgent(agent, outputPath); err != nil {
+			return fmt.Errorf("failed to save agent: %v", err)
+		}
 
-	// Show success message with next steps
-	fmt.Printf("\n%s✅ Success! Your new agent has been created.%s\n\n", colorHighlight, colorReset)
-	fmt.Printf("%s🚀 Quick Actions:%s\n", colorSection, colorReset)
-	fmt.Printf("  %s1.%s Start chatting:     %schatty --with \"%s\"%s\n", 
-		colorHighlight, colorReset, colorValue, agent.Name, colorReset)
-	fmt.Printf("  %s2.%s Set as default:     %schatty --select \"%s\"%s\n", 
-		colorHighlight, colorReset, colorValue, agent.Name, colorReset)
-	fmt.Printf("  %s3.%s View agent details: %schatty --show \"%s\"%s\n", 
-		colorHighlight, colorReset, colorValue, agent.Name, colorReset)
+		if options[selected].value == "chat" {
+			// Start chat with the new agent
+			fmt.Printf("\n%s✨ Starting chat with %s%s%s...\n", 
+				colorHighlight, 
+				colorValue, 
+				agent.Name, 
+				colorReset)
+			
+			// Execute the chat command
+			cmd := exec.Command("chatty", "--with", agent.Name)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		} else {
+			// Show success message with next steps
+			fmt.Printf("\n%s✅ Success! Your new agent has been created.%s\n\n", colorHighlight, colorReset)
+			fmt.Printf("%s🚀 Quick Actions:%s\n", colorSection, colorReset)
+			fmt.Printf("  %s1.%s Start chatting:     %schatty --with \"%s\"%s\n", 
+				colorHighlight, colorReset, 
+				colorValue, agent.Name, colorReset)
+			fmt.Printf("  %s2.%s Set as default:     %schatty --select \"%s\"%s\n", 
+				colorHighlight, colorReset, 
+				colorValue, agent.Name, colorReset)
+			fmt.Printf("  %s3.%s View agent details: %schatty --show \"%s\"%s\n", 
+				colorHighlight, colorReset, 
+				colorValue, agent.Name, colorReset)
+		}
+	}
 
 	return nil
 }
@@ -500,12 +625,4 @@ func previewAgent(agent AgentSchema) {
 		agent.TextColor, 
 		agent.Name,
 		colorReset)
-}
-
-// confirmAction asks for user confirmation
-func confirmAction(prompt string) bool {
-	fmt.Printf("\n%s (y/N): ", prompt)
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	return strings.ToLower(strings.TrimSpace(input)) == "y"
 } 
