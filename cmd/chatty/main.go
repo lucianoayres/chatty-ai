@@ -1959,6 +1959,30 @@ func main() {
     case "--current":
         fmt.Printf("Current agent: %s - %s\n", currentAgent.Name, currentAgent.Description)
         return
+    case "--select":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Missing agent name. Usage: chatty --select <agent_name>")
+            fmt.Println("\nUse 'chatty --list' to see available agents.")
+            return
+        }
+
+        agentName := os.Args[2]
+        if !agents.IsValidAgent(agentName) {
+            fmt.Printf("Error: Invalid agent name '%s'\n", agentName)
+            fmt.Println("\nAvailable agents:")
+            fmt.Print(agents.ListAgents())
+            return
+        }
+
+        if err := agents.UpdateCurrentAgent(agentName); err != nil {
+            fmt.Printf("Error setting current agent: %v\n", err)
+            return
+        }
+
+        agent := agents.GetAgentConfig(agentName)
+        fmt.Printf("\n✅ Current agent set to: %s %s\n", agent.Emoji, agent.Name)
+        fmt.Printf("Description: %s\n", agent.Description)
+        return
     case "--clear":
         target := "all"
         if len(os.Args) > 2 {
