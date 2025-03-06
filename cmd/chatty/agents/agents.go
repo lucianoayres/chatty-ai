@@ -28,8 +28,8 @@ const (
 	builtinDir = "builtin"
 	// User agents directory name
 	userAgentsDir = "agents"
-	// Sample agents directory
-	samplesDir = "samples"
+	// History directory name
+	historyDir = ".chatty"
 )
 
 // Config holds the current configuration
@@ -411,35 +411,40 @@ func ListAgents() string {
 	// Header
 	sb.WriteString(fmt.Sprintf("\n%s🤖 Available Agents%s\n", colorMagenta, colorReset))
 
-	// List built-in agents
-	sb.WriteString(fmt.Sprintf("%sBuilt-in Agents%s\n", colorCyan, colorReset))
 	currentAgent := getCurrentAgent()
 
-	// List built-in agents in their original order
-	for _, name := range cache.builtinOrder {
-		agent := cache.agents[name]
-		if strings.EqualFold(agent.Name, currentAgent) {
-			sb.WriteString(fmt.Sprintf("%s●%s %s [%s%s%s] %s\n",
-				colorGreen, colorReset,
-				agent.Emoji,
-				agent.LabelColor,
-				agent.Name,
-				colorReset,
-				agent.Description))
-		} else {
-			sb.WriteString(fmt.Sprintf("○ %s [%s%s%s] %s\n",
-				agent.Emoji,
-				agent.LabelColor,
-				agent.Name,
-				colorReset,
-				agent.Description))
+	// List custom & community agents first if any exist
+	if len(cache.userOrder) > 0 {
+		sb.WriteString(fmt.Sprintf("%sCustom & Community Agents%s\n", colorCyan, colorReset))
+		for _, name := range cache.userOrder {
+			agent := cache.agents[name]
+			if strings.EqualFold(agent.Name, currentAgent) {
+				sb.WriteString(fmt.Sprintf("%s●%s %s [%s%s%s] %s\n",
+					colorGreen, colorReset,
+					agent.Emoji,
+					agent.LabelColor,
+					agent.Name,
+					colorReset,
+					agent.Description))
+			} else {
+				sb.WriteString(fmt.Sprintf("○ %s [%s%s%s] %s\n",
+					agent.Emoji,
+					agent.LabelColor,
+					agent.Name,
+					colorReset,
+					agent.Description))
+			}
 		}
 	}
 
-	// List user-defined agents if any exist
-	if len(cache.userOrder) > 0 {
-		sb.WriteString(fmt.Sprintf("\n%sUser-defined Agents%s\n", colorCyan, colorReset))
-		for _, name := range cache.userOrder {
+	// List built-in agents if any exist
+	if len(cache.builtinOrder) > 0 {
+		// Add a newline before built-in agents if we listed custom agents
+		if len(cache.userOrder) > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("%sBuilt-in Agents%s\n", colorCyan, colorReset))
+		for _, name := range cache.builtinOrder {
 			agent := cache.agents[name]
 			if strings.EqualFold(agent.Name, currentAgent) {
 				sb.WriteString(fmt.Sprintf("%s●%s %s [%s%s%s] %s\n",
@@ -467,9 +472,9 @@ func ListAgents() string {
 
 	// Additional Agents Section
 	sb.WriteString(fmt.Sprintf("\n%s✨ Want More Agents?%s\n", colorCyan, colorReset))
-	sb.WriteString(fmt.Sprintf("   1. %sList sample agents:%s chatty --list-more\n", 
+	sb.WriteString(fmt.Sprintf("   1. %sBrowse store:%s chatty --store\n", 
 		colorPurple, colorReset))
-	sb.WriteString(fmt.Sprintf("   2. %sInstall an agent:%s chatty --install %s<agent_name>%s\n", 
+	sb.WriteString(fmt.Sprintf("   2. %sInstall agent:%s chatty --install %s\"Agent Name\"%s\n", 
 		colorPurple, colorReset, colorBlue, colorReset))
 
 	// Legend
@@ -496,59 +501,8 @@ func GetHistoryFileName(agentName string) string {
 	agent := GetAgentConfig(agentName)
 	// Convert spaces to underscores and make lowercase
 	safeAgentName := strings.ReplaceAll(strings.ToLower(agent.Name), " ", "_")
-	return fmt.Sprintf("chat_history_%s.json", safeAgentName)
-}
-
-// CopySampleAgents copies sample agent configurations to user directory
-func CopySampleAgents() error {
-	// Get the user's agents directory
-	userDir, err := getUserAgentsDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user agents directory: %v", err)
-	}
-
-	// Create user agents directory if it doesn't exist
-	if err := os.MkdirAll(userDir, 0755); err != nil {
-		return fmt.Errorf("failed to create user agents directory: %v", err)
-	}
-
-	// Get the samples directory path
-	_, filename, _, _ := runtime.Caller(0)
-	samplesPath := filepath.Join(filepath.Dir(filename), samplesDir)
-
-	// Read sample files
-	sampleFiles, err := os.ReadDir(samplesPath)
-	if err != nil {
-		return fmt.Errorf("failed to read sample agents directory: %v", err)
-	}
-
-	// Copy each sample file to the user directory with a .sample extension
-	for _, file := range sampleFiles {
-		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml")) {
-			sourcePath := filepath.Join(samplesPath, file.Name())
-			targetPath := filepath.Join(userDir, file.Name()+".sample")
-
-			// Skip if sample file already exists
-			if _, err := os.Stat(targetPath); err == nil {
-				continue
-			}
-
-			// Read source file
-			data, err := os.ReadFile(sourcePath)
-			if err != nil {
-				fmt.Printf("Warning: Failed to read sample file %s: %v\n", file.Name(), err)
-				continue
-			}
-
-			// Write to target file
-			if err := os.WriteFile(targetPath, data, 0644); err != nil {
-				fmt.Printf("Warning: Failed to write sample file %s: %v\n", file.Name(), err)
-				continue
-			}
-		}
-	}
-
-	return nil
+	// Return the full path relative to the history directory
+	return filepath.Join(historyDir, fmt.Sprintf("chat_history_%s.json", safeAgentName))
 }
 
 // CreateDefaultConfig creates a config.json with default values if it doesn't exist

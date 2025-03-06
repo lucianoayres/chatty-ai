@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -20,6 +19,7 @@ import (
 
 	"chatty/cmd/chatty/agents"
 	"chatty/cmd/chatty/builder"
+	"chatty/cmd/chatty/store"
 )
 
 type Message struct {
@@ -172,15 +172,10 @@ func getHistoryPathForAgent(agentName string) (string, error) {
     if err != nil {
         return "", err
     }
-    baseDir := filepath.Join(homeDir, historyDir)
-    if err := os.MkdirAll(baseDir, 0755); err != nil {
-        return "", err
-    }
     
-    // Get the proper case for the agent name from the config
-    agent := agents.GetAgentConfig(agentName)
-    historyFile := agents.GetHistoryFileName(agent.Name)
-    return filepath.Join(baseDir, historyFile), nil
+    // Get the history file path from the agents package
+    historyFile := agents.GetHistoryFileName(agentName)
+    return filepath.Join(homeDir, historyFile), nil
 }
 
 // Get the history file path for the current agent
@@ -263,10 +258,10 @@ func saveHistory(history []Message) error {
     // Create directory if it doesn't exist
     dir := filepath.Dir(historyPath)
     if err := os.MkdirAll(dir, 0755); err != nil {
-        return err
+        return fmt.Errorf("failed to create history directory: %v", err)
     }
 
-    // Append mode for the file
+    // Save the history file
     data, err := json.MarshalIndent(history, "", "    ")
     if err != nil {
         return err
@@ -1141,14 +1136,6 @@ func initializeChatty() error {
     fmt.Printf("%s✓%s Created agents directory\n", 
         "\033[32m", colorReset)
 
-    // Copy sample agents
-    if err := agents.CopySampleAgents(); err != nil {
-        fmt.Printf("Warning: Failed to copy sample agents: %v\n", err)
-    } else {
-        fmt.Printf("%s✓%s Copied sample agent configurations\n", 
-            "\033[32m", colorReset)
-    }
-
     // Get default agent info
     defaultAgent := agents.DefaultAgent
 
@@ -1184,11 +1171,11 @@ func initializeChatty() error {
     fmt.Printf("\n   %s🧠 Agent Management:%s\n", colorCyan, colorReset)
     fmt.Printf("   • %sList installed agents:%s chatty --list\n",
         colorPurple, colorReset)
-    fmt.Printf("   • %sList sample agents:%s chatty --list-more\n",
+    fmt.Printf("   • %sBrowse store agents:%s chatty --store\n",
         colorPurple, colorReset)
     fmt.Printf("   • %sView agent details:%s chatty --show %s<agent_name>%s\n",
         colorPurple, colorReset, colorBlue, colorReset)
-    fmt.Printf("   • %sInstall a sample agent:%s chatty --install %s<agent_name>%s\n",
+    fmt.Printf("   • %sInstall an agent:%s chatty --install %s<agent_name>%s\n",
         colorPurple, colorReset, colorBlue, colorReset)
     fmt.Printf("   • %sSwitch active agent:%s chatty --select %s<agent_name>%s\n",
         colorPurple, colorReset, colorBlue, colorReset)
@@ -1531,7 +1518,7 @@ func main() {
         fmt.Println("\n💡 This will:")
         fmt.Println("   • Create your personal chat directory (~/.chatty)")
         fmt.Println("   • Set up default configurations")
-        fmt.Println("   • Install sample AI agents")
+        fmt.Println("   • Install built-in AI agents")
         fmt.Println("   • Prepare everything for your first chat")
         os.Exit(1)
     }
@@ -1558,7 +1545,6 @@ func main() {
         fmt.Println("  init                          Initialize Chatty environment")
         fmt.Println("  --clear [all|agent_name]      Clear chat history (all or specific agent)")
         fmt.Println("  --list                        List available agents")
-        fmt.Println("  --list-more                   List sample agents available for installation")
         fmt.Println("  --select <agent_name>         Select an agent")
         fmt.Println("  --current                     Show current agent")
         fmt.Println("  --with <agent_name>           Start a direct chat with a single agent")
@@ -1569,9 +1555,10 @@ func main() {
         fmt.Println("      --auto                    Enable autonomous conversation mode")
         fmt.Println("      --save <filename>         Save conversation log to a file")
         fmt.Println("  --with-random <N>             Start a conversation with N random agents")
-        fmt.Println("  --install <agent_name>        Install a new agent from available samples")
+        fmt.Println("  --install <agent_name>        Install a new agent from the store")
         fmt.Println("  --uninstall <agent_name>      Uninstall a user-defined agent")
         fmt.Println("  --show <agent_name>           Show detailed information about an agent")
+        fmt.Println("  --store                       List available agents in store")
         fmt.Println("\nOptions for simple chat mode:")
         fmt.Println("  --save <filename>             Save conversation log to a file")
         fmt.Println("\nNote: The --debug flag can be used with any command to show debug information.")
@@ -1985,417 +1972,26 @@ func main() {
     case "--list":
         fmt.Print(agents.ListAgents())
         return
-    case "--list-more":
-        // Define color constants for better readability
-        colorMagenta := "\033[1;35m"
-        colorCyan := "\033[1;36m"
-        colorGreen := "\033[32m"
-        colorPurple := "\033[1;95m"  // Using purple instead of yellow
-        colorBlue := "\033[1;34m"
-        colorReset := "\033[0m"
-
-        fmt.Printf("\n%s🎭 Sample Agents Available for Installation%s\n", colorMagenta, colorReset)
-        fmt.Printf("%s✨ Expand your collection with these fascinating personalities!%s\n\n", colorCyan, colorReset)
-        
-        fmt.Printf("%s📋 Installation Options:%s\n", colorCyan, colorReset)
-        fmt.Printf("  %s1.%s %sQuick Install:%s chatty --install %s<agent_name>%s\n", 
-            colorGreen, colorReset, colorPurple, colorReset, colorBlue, colorReset)
-        fmt.Printf("     %sExample:%s chatty --install sagan\n", 
-            colorPurple, colorReset)
-        fmt.Printf("\n  %s2.%s %sManual Install:%s cp ~/.chatty/agents/%s<agent_name>%s.yaml.sample ~/.chatty/agents/%s<agent_name>%s.yaml\n", 
-            colorGreen, colorReset, colorPurple, colorReset, colorBlue, colorReset, colorBlue, colorReset)
-        
-        fmt.Printf("\n%s🔍 Helpful Commands:%s\n", colorCyan, colorReset)
-        fmt.Printf("  • %sView agent details:%s chatty --show %s<agent_name>%s\n", 
-            colorPurple, colorReset, colorBlue, colorReset)
-        fmt.Printf("  • %sSelect after install:%s chatty --select %s\"<Agent Name>\"%s\n", 
-            colorPurple, colorReset, colorBlue, colorReset)
-        fmt.Printf("  • %sList installed agents:%s chatty --list\n\n", 
-            colorPurple, colorReset)
-
-        // Get the user's home directory
-        homeDir, err := os.UserHomeDir()
-        if err != nil {
-            fmt.Printf("Error getting home directory: %v\n", err)
+    case "--store":
+        handler := store.NewHandler(debugMode)
+        if err := handler.ListAgents(); err != nil {
+            fmt.Printf("Error: %v\n", err)
             os.Exit(1)
         }
-
-        // Construct the path to the user's agents directory
-        userDir := filepath.Join(homeDir, ".chatty", "agents")
-        
-        // Read the directory
-        files, err := os.ReadDir(userDir)
-        if err != nil {
-            fmt.Printf("Error reading agents directory: %v\n", err)
-            os.Exit(1)
-        }
-
-        // Filter for .sample files and extract agent names
-        var sampleAgents []string
-        var sampleAgentEmojis = make(map[string]string)
-        var sampleAgentDescriptions = make(map[string]string)
-        
-        for _, file := range files {
-            if strings.HasSuffix(file.Name(), ".yaml.sample") {
-                // Extract the agent name without the .yaml.sample extension
-                agentName := strings.TrimSuffix(file.Name(), ".yaml.sample")
-                
-                // Skip if this agent is already installed
-                if agents.IsValidAgent(agentName) {
-                    continue
-                }
-                
-                sampleAgents = append(sampleAgents, agentName)
-                
-                // Read the sample file to get the emoji
-                data, err := os.ReadFile(filepath.Join(userDir, file.Name()))
-                if err == nil {
-                    var agent agents.AgentConfig
-                    if err := yaml.Unmarshal(data, &agent); err == nil {
-                        sampleAgentEmojis[agentName] = agent.Emoji
-                        sampleAgentDescriptions[agentName] = agent.Description
-                    }
-                }
-            }
-        }
-
-        // Sort the agent names
-        sort.Strings(sampleAgents)
-
-        // Print the agent names in columns
-        if len(sampleAgents) > 0 {
-            fmt.Printf("%s📚 Available Sample Agents:%s\n", colorCyan, colorReset)
-            
-            // Default emoji if not found in the file
-            defaultEmoji := "📄"
-            
-            for i, agent := range sampleAgents {
-                // Get the emoji from the map, or use default if not found
-                emoji := defaultEmoji
-                if e, ok := sampleAgentEmojis[agent]; ok && e != "" {
-                    emoji = e
-                }
-                
-                fmt.Printf("%s %s%-15s%s", emoji, colorPurple, agent, colorReset)
-                if (i+1)%4 == 0 {
-                    fmt.Println()
-                }
-            }
-            // Add a newline if the last row is incomplete
-            if len(sampleAgents)%4 != 0 {
-                fmt.Println()
-            }
-            fmt.Printf("\n%s✅ Total sample agents available: %s%d%s\n\n", 
-                colorGreen, colorPurple, len(sampleAgents), colorReset)
-        } else {
-            fmt.Printf("%s❌ No sample agents found.%s\n\n", colorPurple, colorReset)
-        }
-        os.Exit(0)
-    case "--show":
-        if len(os.Args) < 3 {
-            fmt.Println("Error: Missing agent name. Usage: chatty --show <agent_name>")
-            os.Exit(1)
-        }
-        
-        agentName := os.Args[2]
-        
-        // Define color constants for better readability
-        colorMagenta := "\033[1;35m"
-        colorCyan := "\033[1;36m"
-        colorGreen := "\033[32m"
-        colorPurple := "\033[1;95m"
-        colorBlue := "\033[1;34m"
-        colorYellow := "\033[1;33m"
-        colorReset := "\033[0m"
-        
-        // Force a refresh of the agents cache
-        if err := agents.LoadAgents(); err != nil {
-            fmt.Printf("Error refreshing agents: %v\n", err)
-            os.Exit(1)
-        }
-        
-        // Check if the agent exists
-        if !agents.IsValidAgent(agentName) {
-            // If not a valid agent, check if it's a sample agent
-            homeDir, err := os.UserHomeDir()
-            if err != nil {
-                fmt.Printf("Error getting home directory: %v\n", err)
-                os.Exit(1)
-            }
-            
-            sampleAgentPath := filepath.Join(homeDir, ".chatty", "agents", agentName+".yaml.sample")
-            
-            // First check if it's installed under a different name
-            if _, err := os.Stat(sampleAgentPath); err == nil {
-                // Read the sample file to get the actual agent name
-                data, err := os.ReadFile(sampleAgentPath)
-                if err == nil {
-                    var sampleAgent agents.AgentConfig
-                    if err := yaml.Unmarshal(data, &sampleAgent); err == nil {
-                        // Check if this agent is already installed under its proper name
-                        if agents.IsValidAgent(sampleAgent.Name) {
-                            fmt.Printf("\n%s⚠️  Note:%s The agent '%s' is already installed as '%s'\n", 
-                                colorYellow, colorReset, agentName, sampleAgent.Name)
-                            fmt.Printf("Please use: chatty --show \"%s\"\n\n", sampleAgent.Name)
-                            os.Exit(1)
-                        }
-                    }
-                }
-                
-                // If we get here, it's a genuine sample agent that's not installed
-                // Read the file again for display
-                data, err = os.ReadFile(sampleAgentPath)
-                if err != nil {
-                    fmt.Printf("Error reading sample agent file: %v\n", err)
-                    os.Exit(1)
-                }
-                
-                // Parse the YAML to get agent details
-                var agent agents.AgentConfig
-                if err := yaml.Unmarshal(data, &agent); err != nil {
-                    fmt.Printf("Error parsing sample agent file: %v\n", err)
-                    os.Exit(1)
-                }
-
-                fmt.Printf("\n%s🔍 Sample Agent Profile: %s%s%s\n", 
-                    colorMagenta, colorYellow, agent.Name, colorReset)
-                
-                fmt.Printf("\n%s📋 Basic Information%s\n", colorCyan, colorReset)
-                fmt.Printf("  %s•%s %sIdentifier:%s %s\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agentName)
-                fmt.Printf("  %s•%s %sEmoji:%s %s\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agent.Emoji)
-                fmt.Printf("  %s•%s %sDescription:%s %s\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agent.Description)
-                fmt.Printf("  %s•%s %sStatus:%s Sample (Not Installed)\n", 
-                    colorGreen, colorReset, colorPurple, colorReset)
-
-                fmt.Printf("\n%s🎭 System Message%s\n", colorCyan, colorReset)
-                fmt.Printf("%s%s%s\n", colorBlue, agent.SystemMessage, colorReset)
-
-                fmt.Printf("\n%s💡 Quick Actions%s\n", colorCyan, colorReset)
-                fmt.Printf("  %s1.%s %sInstall this agent:%s chatty --install %s\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agentName)
-                fmt.Printf("  %s2.%s %sAfter installation:%s chatty --select \"%s\"\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agent.Name)
-                fmt.Printf("  %s3.%s %sStart chatting:%s chatty --with \"%s\"\n\n", 
-                    colorGreen, colorReset, colorPurple, colorReset, agent.Name)
-            } else {
-                fmt.Printf("Error: Agent '%s' not found\n", agentName)
-                fmt.Println("\nTry these commands:")
-                fmt.Printf("  • %sView available agents:%s chatty --list\n", 
-                    colorPurple, colorReset)
-                fmt.Printf("  • %sView sample agents:%s chatty --list-more\n", 
-                    colorPurple, colorReset)
-                os.Exit(1)
-            }
-        } else {
-            // Get the agent configuration using the agents package
-            agent := agents.GetAgentConfig(agentName)
-            
-            // Determine agent type and status
-            agentType := "User Agent"
-            if agent.Source == "built-in" {
-                agentType = "Built-in Agent"
-            }
-            
-            // Get current agent for status
-            currentAgentConfig, err := agents.GetCurrentConfig()
-            isActive := false
-            if err == nil && currentAgentConfig != nil && strings.EqualFold(currentAgentConfig.CurrentAgent, agent.Name) {
-                isActive = true
-            }
-            
-            fmt.Printf("\n%s🔍 %s Profile: %s%s%s\n", 
-                colorMagenta, agentType, colorYellow, agent.Name, colorReset)
-            
-            fmt.Printf("\n%s📋 Basic Information%s\n", colorCyan, colorReset)
-            fmt.Printf("  %s•%s %sIdentifier:%s %s\n", 
-                colorGreen, colorReset, colorPurple, colorReset, strings.ToLower(agent.Name))
-            fmt.Printf("  %s•%s %sEmoji:%s %s\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agent.Emoji)
-            fmt.Printf("  %s•%s %sDescription:%s %s\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agent.Description)
-            fmt.Printf("  %s•%s %sType:%s %s\n", 
-                colorGreen, colorReset, colorPurple, colorReset, agentType)
-            
-            // Determine status text
-            var statusText string
-            if isActive {
-                statusText = "Active (Current Agent)"
-            } else {
-                statusText = "Installed"
-            }
-            
-            fmt.Printf("  %s•%s %sStatus:%s %s%s%s\n", 
-                colorGreen, colorReset, colorPurple, colorReset,
-                colorGreen, statusText, colorReset)
-
-            fmt.Printf("\n%s🎭 System Message%s\n", colorCyan, colorReset)
-            fmt.Printf("%s%s%s\n", colorBlue, agent.SystemMessage, colorReset)
-
-            fmt.Printf("\n%s💡 Quick Actions%s\n", colorCyan, colorReset)
-            
-            // Track action number
-            actionNum := 1
-
-            // Show "Set as current agent" only if not active
-            if !isActive {
-                fmt.Printf("  %s%d.%s %sSet as current agent:%s chatty --select \"%s\"\n", 
-                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
-                actionNum++
-            }
-
-            // Show chat actions with proper numbering
-            fmt.Printf("  %s%d.%s %sStart a chat:%s chatty --with \"%s\"\n", 
-                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
-            actionNum++
-
-            fmt.Printf("  %s%d.%s %sStart group chat:%s chatty --with \"%s,<other_agent>\"\n", 
-                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
-            actionNum++
-
-            fmt.Printf("  %s%d.%s %sAuto conversation:%s chatty --with \"%s,<other_agent>\" --auto --topic \"<topic or message>\"\n", 
-                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
-            actionNum++
-
-            fmt.Printf("  %s%d.%s %sClear chat history:%s chatty --clear \"%s\"\n\n", 
-                colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
-        }
-        os.Exit(0)
+        return
     case "--install":
         if len(os.Args) < 3 {
             fmt.Println("Error: Missing agent name. Usage: chatty --install <agent_name>")
-            fmt.Println("Use 'chatty --list-more' to see available sample agents.")
+            fmt.Println("\nUse 'chatty --store' to see available agents.")
             os.Exit(1)
         }
-        
-        agentName := os.Args[2]
-        
-        // Get the user's home directory
-        homeDir, err := os.UserHomeDir()
-        if err != nil {
-            fmt.Printf("Error getting home directory: %v\n", err)
-            os.Exit(1)
-        }
-        
-        // Construct path to the agents directory
-        agentsDir := filepath.Join(homeDir, ".chatty", "agents")
-        
-        // Construct paths to the sample and target agent files
-        sampleAgentPath := filepath.Join(agentsDir, agentName+".yaml.sample")
-        targetAgentPath := filepath.Join(agentsDir, agentName+".yaml")
-        
-        // Check if the sample agent exists
-        if _, err := os.Stat(sampleAgentPath); err != nil {
-            fmt.Printf("Error: Sample agent '%s' not found\n", agentName)
-            fmt.Println("\nUse 'chatty --list-more' to see available sample agents.")
-            os.Exit(1)
-        }
-        
-        // Check if the target agent already exists
-        if _, err := os.Stat(targetAgentPath); err == nil {
-            // Read the existing agent file to get its name
-            data, err := os.ReadFile(targetAgentPath)
-            if err == nil {
-                var existingAgent agents.AgentConfig
-                if err := yaml.Unmarshal(data, &existingAgent); err == nil {
-                    fmt.Printf("\nError: Agent '%s' is already installed!\n", agentName)
-                    fmt.Printf("\nTo chat with %s, try:\n", existingAgent.Name)
-                    fmt.Printf("  • Start a chat: chatty --with \"%s\"\n", existingAgent.Name)
-                    fmt.Printf("  • Set as current: chatty --select \"%s\"\n", existingAgent.Name)
-                    fmt.Printf("  • View details: chatty --show \"%s\"\n\n", existingAgent.Name)
-                    os.Exit(1)
-                }
-            }
-            // Fallback to simple error if we can't read the agent details
-            fmt.Printf("Error: Agent '%s' is already installed\n", agentName)
-            os.Exit(1)
-        }
-        
-        // Read the sample agent file to extract the actual agent name
-        data, err := os.ReadFile(sampleAgentPath)
-        if err != nil {
-            fmt.Printf("Error reading sample agent file: %v\n", err)
-            os.Exit(1)
-        }
-        
-        // Parse the YAML to get the actual agent name
-        var agentConfig struct {
-            Name string `yaml:"name"`
-        }
-        if err := yaml.Unmarshal(data, &agentConfig); err != nil {
-            fmt.Printf("Error parsing sample agent file: %v\n", err)
-            os.Exit(1)
-        }
-        
-        // Write the data to the target agent file
-        if err := os.WriteFile(targetAgentPath, data, 0644); err != nil {
-            fmt.Printf("Error creating agent file: %v\n", err)
-            os.Exit(1)
-        }
-        
-        // Reload agents to refresh the cache
-        if err := agents.LoadAgents(); err != nil {
-            fmt.Printf("Warning: Failed to reload agents after installation: %v\n", err)
-        }
-        
-        // Define color constants for better readability
-        colorCyan := "\033[1;36m"
-        colorGreen := "\033[32m"
-        colorPurple := "\033[1;95m"
-        colorReset := "\033[0m"
-        
-        // Get the installed agent config
-        installedAgent := agents.GetAgentConfig(agentConfig.Name)
-        
-        fmt.Printf("\n%s✨ Agent installed successfully!%s\n", colorCyan, colorReset)
-        fmt.Printf("%s%s [%s%s%s] %s\n", 
-            installedAgent.Emoji,
-            installedAgent.LabelColor,
-            installedAgent.LabelColor,
-            installedAgent.Name,
-            colorReset,
-            installedAgent.Description)
 
-        fmt.Printf("\n%s💡 Quick Actions:%s\n", colorCyan, colorReset)
-        fmt.Printf("  %s1.%s %sSet as current agent:%s chatty --select \"%s\"\n", 
-            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
-        fmt.Printf("  %s2.%s %sStart chatting:%s chatty --with \"%s\"\n", 
-            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
-        fmt.Printf("  %s3.%s %sView agent details:%s chatty --show \"%s\"\n\n", 
-            colorGreen, colorReset, colorPurple, colorReset, installedAgent.Name)
-        
-        os.Exit(0)
-    case "--select":
-        if len(os.Args) < 3 {
-            fmt.Println("Error: Missing agent name. Usage: chatty --select <agent_name>")
-            fmt.Println("Use 'chatty --list' to see available agents.")
+        handler := store.NewHandler(debugMode)
+        if err := handler.InstallAgent(os.Args[2]); err != nil {
+            fmt.Printf("Error: %v\n", err)
             os.Exit(1)
         }
-        
-        agentName := os.Args[2]
-        
-        // Validate agent name
-        if !agents.IsValidAgent(agentName) {
-            fmt.Printf("Error: Invalid agent name '%s'\n", agentName)
-            fmt.Println("\nAvailable agents:")
-            fmt.Print(agents.ListAgents())
-            os.Exit(1)
-        }
-        
-        currentAgent = agents.GetAgentConfig(agentName)
-        if err := agents.UpdateCurrentAgent(agentName); err != nil {
-            fmt.Printf("Error saving agent selection: %v\n", err)
-            os.Exit(1)
-        }
-        fmt.Printf("Switched to %s [%s%s%s] %s\n", 
-            currentAgent.Emoji,
-            currentAgent.LabelColor,
-            currentAgent.Name,
-            "\u001b[0m", // Reset color
-            currentAgent.Description)
-        os.Exit(0)
+        return
     case "--uninstall":
         if len(os.Args) < 3 {
             fmt.Println("Error: Please specify an agent name to uninstall")
@@ -2441,9 +2037,192 @@ func main() {
         fmt.Println("\nQuick Actions:")
         fmt.Printf("  • %sView available agents:%s chatty --list\n", 
             colorPurple, colorReset)
-        fmt.Printf("  • %sInstall sample agents:%s chatty --list-more\n", 
+        fmt.Printf("  • %sView store agents:%s chatty --store\n", 
             colorPurple, colorReset)
         os.Exit(0)
+    case "--show":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Missing agent name. Usage: chatty --show <agent_name>")
+            os.Exit(1)
+        }
+
+        // First try local agents
+        if agents.IsValidAgent(os.Args[2]) {
+            // Define color constants for better readability
+            colorMagenta := "\033[1;35m"
+            colorCyan := "\033[1;36m"
+            colorGreen := "\033[32m"
+            colorPurple := "\033[1;95m"
+            colorBlue := "\033[1;34m"
+            colorYellow := "\033[1;33m"
+            colorReset := "\033[0m"
+            
+            // Force a refresh of the agents cache
+            if err := agents.LoadAgents(); err != nil {
+                fmt.Printf("Error refreshing agents: %v\n", err)
+                os.Exit(1)
+            }
+            
+            // Check if the agent exists
+            if !agents.IsValidAgent(os.Args[2]) {
+                // If not a valid agent, check if it's a sample agent
+                homeDir, err := os.UserHomeDir()
+                if err != nil {
+                    fmt.Printf("Error getting home directory: %v\n", err)
+                    os.Exit(1)
+                }
+                
+                sampleAgentPath := filepath.Join(homeDir, ".chatty", "agents", os.Args[2]+".yaml.sample")
+                
+                // First check if it's installed under a different name
+                if _, err := os.Stat(sampleAgentPath); err == nil {
+                    // Read the sample file to get the actual agent name
+                    data, err := os.ReadFile(sampleAgentPath)
+                    if err == nil {
+                        var sampleAgent agents.AgentConfig
+                        if err := yaml.Unmarshal(data, &sampleAgent); err == nil {
+                            // Check if this agent is already installed under its proper name
+                            if agents.IsValidAgent(sampleAgent.Name) {
+                                fmt.Printf("\n%s⚠️  Note:%s The agent '%s' is already installed as '%s'\n", 
+                                    colorYellow, colorReset, os.Args[2], sampleAgent.Name)
+                                fmt.Printf("Please use: chatty --show \"%s\"\n\n", sampleAgent.Name)
+                                os.Exit(1)
+                            }
+                        }
+                    }
+                    
+                    // If we get here, it's a genuine sample agent that's not installed
+                    // Read the file again for display
+                    data, err = os.ReadFile(sampleAgentPath)
+                    if err != nil {
+                        fmt.Printf("Error reading sample agent file: %v\n", err)
+                        os.Exit(1)
+                    }
+                    
+                    // Parse the YAML to get agent details
+                    var agent agents.AgentConfig
+                    if err := yaml.Unmarshal(data, &agent); err != nil {
+                        fmt.Printf("Error parsing sample agent file: %v\n", err)
+                        os.Exit(1)
+                    }
+
+                    fmt.Printf("\n%s🔍 Sample Agent Profile: %s%s%s\n", 
+                        colorMagenta, colorYellow, agent.Name, colorReset)
+                    
+                    fmt.Printf("\n%s📋 Basic Information%s\n", colorCyan, colorReset)
+                    fmt.Printf("  %s•%s %sIdentifier:%s %s\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, os.Args[2])
+                    fmt.Printf("  %s•%s %sEmoji:%s %s\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, agent.Emoji)
+                    fmt.Printf("  %s•%s %sDescription:%s %s\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, agent.Description)
+                    fmt.Printf("  %s•%s %sStatus:%s Sample (Not Installed)\n", 
+                        colorGreen, colorReset, colorPurple, colorReset)
+
+                    fmt.Printf("\n%s🎭 System Message%s\n", colorCyan, colorReset)
+                    fmt.Printf("%s%s%s\n", colorBlue, agent.SystemMessage, colorReset)
+
+                    fmt.Printf("\n%s💡 Quick Actions%s\n", colorCyan, colorReset)
+                    fmt.Printf("  %s1.%s %sInstall this agent:%s chatty --install %s\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, os.Args[2])
+                    fmt.Printf("  %s2.%s %sAfter installation:%s chatty --select \"%s\"\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, agent.Name)
+                    fmt.Printf("  %s3.%s %sStart chatting:%s chatty --with \"%s\"\n\n", 
+                        colorGreen, colorReset, colorPurple, colorReset, agent.Name)
+                } else {
+                    fmt.Printf("Error: Agent '%s' not found\n", os.Args[2])
+                    fmt.Println("\nTry these commands:")
+                    fmt.Printf("  • %sView available agents:%s chatty --list\n", 
+                        colorPurple, colorReset)
+                    fmt.Printf("  • %sView sample agents:%s chatty --list-more\n", 
+                        colorPurple, colorReset)
+                    os.Exit(1)
+                }
+            } else {
+                // Get the agent configuration using the agents package
+                agent := agents.GetAgentConfig(os.Args[2])
+                
+                // Determine agent type and status
+                agentType := "User Agent"
+                if agent.Source == "built-in" {
+                    agentType = "Built-in Agent"
+                }
+                
+                // Get current agent for status
+                currentAgentConfig, err := agents.GetCurrentConfig()
+                isActive := false
+                if err == nil && currentAgentConfig != nil && strings.EqualFold(currentAgentConfig.CurrentAgent, agent.Name) {
+                    isActive = true
+                }
+                
+                fmt.Printf("\n%s🔍 %s Profile: %s%s%s\n", 
+                    colorMagenta, agentType, colorYellow, agent.Name, colorReset)
+                
+                fmt.Printf("\n%s📋 Basic Information%s\n", colorCyan, colorReset)
+                fmt.Printf("  %s•%s %sIdentifier:%s %s\n", 
+                    colorGreen, colorReset, colorPurple, colorReset, strings.ToLower(agent.Name))
+                fmt.Printf("  %s•%s %sEmoji:%s %s\n", 
+                    colorGreen, colorReset, colorPurple, colorReset, agent.Emoji)
+                fmt.Printf("  %s•%s %sDescription:%s %s\n", 
+                    colorGreen, colorReset, colorPurple, colorReset, agent.Description)
+                fmt.Printf("  %s•%s %sType:%s %s\n", 
+                    colorGreen, colorReset, colorPurple, colorReset, agentType)
+                
+                // Determine status text
+                var statusText string
+                if isActive {
+                    statusText = "Active (Current Agent)"
+                } else {
+                    statusText = "Installed"
+                }
+                
+                fmt.Printf("  %s•%s %sStatus:%s %s%s%s\n", 
+                    colorGreen, colorReset, colorPurple, colorReset,
+                    colorGreen, statusText, colorReset)
+
+                fmt.Printf("\n%s🎭 System Message%s\n", colorCyan, colorReset)
+                fmt.Printf("%s%s%s\n", colorBlue, agent.SystemMessage, colorReset)
+
+                fmt.Printf("\n%s💡 Quick Actions%s\n", colorCyan, colorReset)
+                
+                // Track action number
+                actionNum := 1
+
+                // Show "Set as current agent" only if not active
+                if !isActive {
+                    fmt.Printf("  %s%d.%s %sSet as current agent:%s chatty --select \"%s\"\n", 
+                        colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+                    actionNum++
+                }
+
+                // Show chat actions with proper numbering
+                fmt.Printf("  %s%d.%s %sStart a chat:%s chatty --with \"%s\"\n", 
+                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+                actionNum++
+
+                fmt.Printf("  %s%d.%s %sStart group chat:%s chatty --with \"%s,<other_agent>\"\n", 
+                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+                actionNum++
+
+                fmt.Printf("  %s%d.%s %sAuto conversation:%s chatty --with \"%s,<other_agent>\" --auto --topic \"<topic or message>\"\n", 
+                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+                actionNum++
+
+                fmt.Printf("  %s%d.%s %sClear chat history:%s chatty --clear \"%s\"\n\n", 
+                    colorGreen, actionNum, colorReset, colorPurple, colorReset, agent.Name)
+            }
+        } else {
+            // Try store agents
+            handler := store.NewHandler(debugMode)
+            if err := handler.ShowAgent(os.Args[2]); err != nil {
+                fmt.Printf("Error: Agent '%s' not found locally or in store\n", os.Args[2])
+                fmt.Println("\nTry these commands:")
+                fmt.Printf("  • View local agents:  chatty --list\n")
+                fmt.Printf("  • View store agents:  chatty --store\n")
+                os.Exit(1)
+            }
+        }
+        return
     }
 
     // Parse arguments for --save

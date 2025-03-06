@@ -60,7 +60,6 @@ chatty init
 ```bash
 # View available agents
 chatty --list                    # List installed agents
-chatty --list-more              # Show sample agents available for install
 chatty --show "Agent Name"      # View agent details
 
 # Simple chat
@@ -74,7 +73,7 @@ chatty --clear "Agent Name"    # Clear agent's chat history
 chatty --clear all            # Clear all chat histories
 ```
 
-### 🎨 AI Agent Builder
+### �� AI Agent Builder
 
 Create any AI personality you can imagine:
 
@@ -99,11 +98,7 @@ You can then review and customize everything, and immediately start chatting wit
 
 ### 🎭 Pre-built Agents
 
-Chatty comes with two sets of ready-to-use agents:
-
-#### 💻 Built-in Agents
-
-A diverse roster of [pre-installed agents](cmd/chatty/agents) comes with Chatty:
+Chatty comes with a diverse roster of [pre-installed agents](cmd/chatty/agents):
 
 - **Einstein**: Discuss the mysteries of the universe
 - **Ada**: Explore the art of coding and computation
@@ -119,21 +114,6 @@ chatty --show "Einstein"   # View detailed agent configuration
 ```
 
 Want to understand how agents are structured? Check out the [Agent Structure](#-agent-structure) section.
-
-#### 🎨 Sample Agents
-
-Discover our collection of [50+ additional personalities](cmd/chatty/agents/samples) ready to be installed:
-
-```bash
-# List available sample agents
-chatty --list-more
-
-# View details of a sample agent
-chatty --show "sagan"     # View Carl Sagan's profile before installing
-
-# Install a sample agent
-chatty --install "sagan"  # Install Carl Sagan
-```
 
 ### 🗣️ Multi-Agent Conversations
 
