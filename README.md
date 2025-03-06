@@ -2,7 +2,9 @@
 
 ![Chat AI Banner](images/chatty_ai_banner.png)
 
-## Chat with Historical Figures, Scientists, Experts and more
+## Generate & Chat with Your Dream Team of Historical Figures, Scientists, Experts & More!
+
+Create and converse with any historical figure, scientist, expert, or personality you can imagine. From ancient philosophers to modern innovators, literary giants to tech visionaries - if you can describe them, Chatty can bring them to life in your terminal!
 
 Transform your terminal into a vibrant AI-powered workspace where historical figures, scientists, philosophers, and experts come alive! Chatty isn't just another CLI tool - it's your gateway to engaging conversations with some of history's most fascinating minds.
 
@@ -55,73 +57,103 @@ Initialize Chatty:
 chatty init
 ```
 
-## 🎨 AI Agent Builder (New!)
+## 🎨 AI Agent Builder
 
-Create your own AI agents with natural language! Our revolutionary AI Agent Builder lets you bring any personality to life just by describing them. No coding required - it's like magic! ✨
+Create your own AI agents with natural language! Our revolutionary AI Agent Builder uses AI to automatically generate complete agent personalities from simple descriptions or even just names. Just tell it who or what you want, and watch the magic happen! ✨
+
+The AI will generate everything:
+
+- Perfect system message capturing the agent's essence
+- Fitting emoji that represents their character
+- Concise yet informative description
+
+You'll then get to review and fine-tune everything through an intuitive interface!
+
+### 🌟 Creating Agents from Names
+
+These are just examples - let your imagination run wild! Any name you can think of, from any field or era, can become a rich AI personality:
 
 ```bash
-# Create a new AI agent with a simple description
-chatty --build "A witty detective inspired by Sherlock Holmes, who solves coding mysteries and debugging challenges with clever deductions and programming expertise"
+# Scientific Pioneers
+chatty --build "Carl Jung"            # Pioneering psychoanalyst and founder of analytical psychology
+chatty --build "Friedrich Nietzsche"  # Influential philosopher known for existentialism and nihilism
+chatty --build "Grace Hopper"         # Computer science pioneer and inventor of COBOL
 
-# The builder will:
-# 1. Generate the perfect system message
-# 2. Choose an appropriate emoji
-# 3. Create a concise description
-# 4. Let you customize colors and appearance
-# 5. Start chatting immediately!
+# Fictional Characters
+chatty --build "Tony Stark"           # Your favorite genius billionaire playboy philanthropist
+chatty --build "John Wick"            # The man, the myth, the legend with a dog
+chatty --build "Hermione Granger"     # The brightest witch of her age
 ```
 
-### 🌟 Example Agent Descriptions
+### 🎯 Creating Specialized Agents
 
-Create specialized agents for any task:
+Or describe exactly what you want:
 
 ```bash
-# Technical Expert
-chatty --build "A senior DevOps engineer who's an expert in Docker, Kubernetes, and cloud infrastructure, with a focus on best practices and security"
+# Modern Mentors
+chatty --build "A blockchain developer who explains Web3 concepts through analogies from popular video games and memes"
 
-# Creative Assistant
-chatty --build "A creative writing coach who combines the wit of Oscar Wilde with the storytelling wisdom of Joseph Campbell"
+# Creative Innovators
+chatty --build "A film director who combines Christopher Nolan's plot complexity, Wes Anderson's visual style, and Tarantino's dialogue writing"
 
-# Learning Companion
-chatty --build "A patient and encouraging math tutor who explains complex concepts using real-world examples and visual analogies"
+# Tech Guides
+chatty --build "A cybersecurity expert who explains hacking concepts through heist movie scenarios and spy thriller references"
 
-# Productivity Guru
-chatty --build "A productivity expert who combines GTD principles with modern digital tools, helping users optimize their workflow with practical advice"
+# Unique Specialists
+chatty --build "A futurist sociologist who analyzes current trends through the lens of Black Mirror episodes and modern sci-fi stories"
 ```
 
 ### 💡 Tips for Great Agents
 
-1. **Be Specific**: Include expertise areas, personality traits, and communication style
-2. **Add Context**: Mention inspirations or role models for the agent's behavior
-3. **Define Purpose**: Clearly state what tasks or topics the agent should excel at
-4. **Include Tone**: Specify if you want the agent to be formal, casual, humorous, etc.
+1. **Using Names**:
+
+   - Just provide the name of any historical figure, expert, or personality
+   - The AI will research and capture their essence
+   - You can review and adjust the generated profile
+
+2. **Using Descriptions**:
+   - Be specific about expertise areas and personality traits
+   - Mention inspirations or role models for behavior
+   - Include desired communication style (formal, casual, humorous)
+   - Specify unique perspectives or approaches
 
 ### ✨ Builder Features
 
-- **Interactive Creation**: Step-by-step process with live previews
-- **Smart Defaults**: AI-powered suggestions for all agent attributes
-- **Instant Testing**: Start chatting with your agent immediately after creation
-- **Easy Editing**: Fine-tune any aspect of your agent through an intuitive interface
-- **Color Customization**: Choose from a beautiful palette of colors for a unique look
+- **AI-Powered Generation**: Complete agent profiles created automatically
+- **Interactive Review**: Step-by-step process to review and customize
+- **Smart Defaults**: AI-chosen emojis and colors that match the personality
+- **Instant Testing**: Start chatting with your agent immediately
+- **Easy Editing**: Fine-tune any aspect through an intuitive interface
 
 ### 🎯 Example Workflow
 
-1. **Describe Your Agent**:
+1. **Provide Input**:
 
    ```bash
-   chatty --build "A friendly Python mentor who explains code like Bob Ross painted - making complex concepts feel simple and happy accidents into learning opportunities"
+   # Using a name:
+   chatty --build "Michelangelo"
+
+   # Or a description:
+   chatty --build "A culinary historian who explores ancient recipes and cooking techniques, bringing the flavors of history to life with modern adaptations"
    ```
 
-2. **Review & Customize**:
+2. **Review AI-Generated Profile**:
 
-   - Fine-tune the generated name, emoji, and description
-   - Edit the system message if needed
-   - Choose custom colors for a unique appearance
+   - The AI creates a complete agent profile
+   - Review name, emoji, and description
+   - Check the system message that defines their personality
+   - Adjust any aspects if desired
 
-3. **Choose Your Next Step**:
-   - Start chatting immediately
-   - Save and set as default
-   - Save and exit
+3. **Customize Appearance**:
+
+   - Choose from beautiful color combinations
+   - Preview how they'll look in chat
+   - Fine-tune their visual identity
+
+4. **Choose Your Next Step**:
+   - Start chatting immediately with your new agent
+   - Save and set as your default agent
+   - Save and exit to use later
 
 ## 🎭 Available Agents
 
