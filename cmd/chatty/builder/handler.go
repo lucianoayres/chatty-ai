@@ -41,26 +41,51 @@ func startAnimation() *Animation {
 		stopChan: make(chan bool),
 	}
 
-	// Fun loading messages about AI
+	// Tips about using the program
 	messages := []string{
-		"Crafting your AI assistant's personality...",
-		"Teaching your agent how to be helpful...",
-		"Downloading common sense module...",
-		"Configuring witty response algorithms...",
-		"Installing emoji recognition software...",
-		"Tuning the friendliness parameters...",
-		"Calibrating the helpfulness meter...",
-		"Loading conversation skills...",
-		"Generating unique personality traits...",
-		"Adjusting the politeness settings...",
+		"💡 Tip: Use 'chatty --with \"Agent Name\"' to chat with a specific agent",
+		"💡 Tip: Press Enter without typing to keep the current value when editing",
+		"💡 Tip: You can set a default agent with 'chatty --select \"Agent Name\"'",
+		"💡 Tip: View all available agents with 'chatty --list'",
+		"💡 Tip: Use 'chatty --show \"Agent Name\"' to see agent details",
+		"💡 Tip: Type ':wq' on a new line to finish editing multi-line text",
+		"💡 Tip: You can install sample agents with 'chatty --install \"Agent Name\"'",
+		"💡 Tip: Browse sample agents with 'chatty --list-more'",
+		"💡 Tip: Agents are saved in ~/.chatty/agents as YAML files",
+		"💡 Tip: Each agent can have its own unique color scheme",
+		"💡 Tip: Use descriptive names for your agents to remember their roles",
+		"💡 Tip: The system message defines your agent's personality",
+		"💡 Tip: Choose emojis that represent your agent's role",
+		"💡 Tip: You can have multiple agents for different tasks",
+		"💡 Tip: Make your agent's description clear and specific",
+		"💡 Tip: Test different colors to find the perfect combination",
+		"💡 Tip: You can edit any field before saving your agent",
+		"💡 Tip: Use 'chatty --uninstall \"Agent Name\"' to remove an agent",
+		"💡 Tip: View conversation history in ~/.chatty/history",
+		"💡 Tip: Debug mode can be enabled with --debug flag",
 	}
 
 	go func() {
 		frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 		frameIndex := 0
-		messageIndex := 0
-		lastMessageChange := time.Now()
 		currentMessage := ""
+		prefix := colorAccent + frames[0] + " " + colorReset
+		
+		// Create a shuffled list of indices for random selection
+		messageIndices := make([]int, len(messages))
+		for i := range messageIndices {
+			messageIndices[i] = i
+		}
+		
+		// Fisher-Yates shuffle
+		for i := len(messageIndices) - 1; i > 0; i-- {
+			j := time.Now().UnixNano() % int64(i+1)
+			messageIndices[i], messageIndices[j] = messageIndices[j], messageIndices[i]
+		}
+		
+		currentIndex := 0
+		lastMessageChange := time.Now()
+		isErasing := false
 		
 		for {
 			select {
@@ -68,30 +93,49 @@ func startAnimation() *Animation {
 				fmt.Printf("\r%s\r", strings.Repeat(" ", 80)) // Clear the line
 				return
 			default:
+				// Update the prefix with current frame
+				prefix = colorAccent + frames[frameIndex] + " " + colorReset
+				
 				// Change message every 15 seconds
 				if time.Since(lastMessageChange) >= 15*time.Second {
-					messageIndex = (messageIndex + 1) % len(messages)
+					isErasing = true
 					lastMessageChange = time.Now()
-					currentMessage = "" // Reset current message for typing effect
 				}
 
-				// Typing effect: gradually reveal the message
-				targetMessage := messages[messageIndex]
-				if len(currentMessage) < len(targetMessage) {
-					currentMessage = targetMessage[:len(currentMessage) + 1]
-					time.Sleep(30 * time.Millisecond) // Slower typing speed
+				if isErasing {
+					// Erase the current message character by character
+					if len(currentMessage) > 0 {
+						currentMessage = currentMessage[:len(currentMessage)-1]
+						time.Sleep(15 * time.Millisecond) // Faster backspace speed
+					} else {
+						// When fully erased, prepare for the next message
+						isErasing = false
+						currentIndex = (currentIndex + 1) % len(messages)
+						// If we've used all messages, reshuffle
+						if currentIndex == 0 {
+							for i := len(messageIndices) - 1; i > 0; i-- {
+								j := time.Now().UnixNano() % int64(i+1)
+								messageIndices[i], messageIndices[j] = messageIndices[j], messageIndices[i]
+							}
+						}
+					}
+				} else {
+					// Type the new message character by character
+					targetMessage := messages[messageIndices[currentIndex]]
+					if len(currentMessage) < len(targetMessage) {
+						currentMessage = targetMessage[:len(currentMessage) + 1]
+						time.Sleep(30 * time.Millisecond) // Normal typing speed
+					}
 				}
 
 				// Clear the line and print the current frame and message
-				fmt.Printf("\r%s\r%s%s %s%s", 
+				fmt.Printf("\r%s\r%s%s", 
 					strings.Repeat(" ", 80),
-					colorAccent,
-					frames[frameIndex],
-					currentMessage,
-					colorReset)
+					prefix,
+					currentMessage)
 				
 				frameIndex = (frameIndex + 1) % len(frames)
-				if len(currentMessage) == len(targetMessage) {
+				if !isErasing && len(currentMessage) == len(messages[messageIndices[currentIndex]]) {
 					time.Sleep(80 * time.Millisecond) // Normal spinner speed
 				}
 			}
@@ -445,11 +489,17 @@ func previewAgent(agent AgentSchema) {
 	fmt.Printf("\nChat preview:\n")
 	fmt.Printf("════════════\n")
 	// Show the agent's name with label color
-	fmt.Printf("%s [%s%s\u001b[0m]: ", agent.Emoji, agent.LabelColor, agent.Name)
+	fmt.Printf("%s %s%s%s: ", 
+		agent.Emoji, 
+		agent.LabelColor, 
+		agent.Name,
+		colorReset)
 	
 	// Show a sample message with text color
-	fmt.Printf("%sHello! I am %s, ready to assist you.\u001b[0m\n", 
-		agent.TextColor, agent.Name)
+	fmt.Printf("%sHello! I am %s, ready to assist you.%s\n", 
+		agent.TextColor, 
+		agent.Name,
+		colorReset)
 }
 
 // confirmAction asks for user confirmation
