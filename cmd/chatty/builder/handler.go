@@ -211,15 +211,16 @@ func readKey() ([]byte, error) {
 func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int, error) {
 	currentIndex := defaultIndex
 	
-	// Store cursor position
+	// Save initial cursor position - this will be our menu start position
 	fmt.Print("\033[s")
 	
-	for {
-		// Return to stored position and clear to end of screen
-		fmt.Print("\033[u\033[J")
+	// Draw the initial menu
+	drawMenu := func() {
+		// Clear only from current position to end of screen (not the whole screen)
+		fmt.Print("\033[J")
 		
 		// Show title with a separator line
-		fmt.Printf("\n%s%s%s\n", colorSection, title, colorReset)
+		fmt.Printf("%s%s%s\n", colorSection, title, colorReset)
 		fmt.Printf("%s%s%s\n\n", colorSection, strings.Repeat("─", len(title)), colorReset)
 
 		// Display options
@@ -234,8 +235,13 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 		}
 
 		// Show navigation help
-		fmt.Printf("\n%s↑/↓: Navigate • Enter: Select • Esc: Cancel%s", colorPrompt, colorReset)
-
+		fmt.Printf("\n%s↑/↓: Navigate • Enter: Select • Esc: Cancel%s\n", colorPrompt, colorReset)
+	}
+	
+	// Initial menu draw
+	drawMenu()
+	
+	for {
 		// Read keystroke
 		key, err := readKey()
 		if err != nil {
@@ -246,10 +252,12 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 		if len(key) == 1 {
 			switch key[0] {
 			case 13: // Enter
-				fmt.Print("\033[u\033[J") // Clear menu before returning
+				// Clear just the menu area
+				fmt.Print("\033[u\033[J")
 				return currentIndex, nil
 			case 27: // Escape
-				fmt.Print("\033[u\033[J") // Clear menu before returning
+				// Clear just the menu area
+				fmt.Print("\033[u\033[J")
 				return -1, nil
 			}
 		} else if len(key) == 3 {
@@ -257,10 +265,16 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 			case 65: // Up arrow
 				if currentIndex > 0 {
 					currentIndex--
+					// Return to menu start and redraw
+					fmt.Print("\033[u")
+					drawMenu()
 				}
 			case 66: // Down arrow
 				if currentIndex < len(options)-1 {
 					currentIndex++
+					// Return to menu start and redraw
+					fmt.Print("\033[u")
+					drawMenu()
 				}
 			}
 		}
@@ -270,7 +284,10 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 // editAgentFields allows the user to edit agent fields through a light bar menu
 func editAgentFields(agent *AgentSchema) bool {
 	for {
-		// Show current configuration without clearing the screen
+		// Print a separator before showing the current configuration
+		fmt.Printf("\n%s%s%s\n", colorSection, strings.Repeat("─", 50), colorReset)
+		
+		// Show current configuration
 		showAgentFields(agent)
 
 		// Prepare menu options
@@ -293,29 +310,21 @@ func editAgentFields(agent *AgentSchema) bool {
 		case "continue":
 			return true
 		case "name":
-			// Clear screen for editing
-			fmt.Print("\033[H\033[2J")
 			fmt.Printf("\n%s✏️  Edit Name%s\n", colorSection, colorReset)
 			fmt.Printf("%s════════════%s\n\n", colorSection, colorReset)
 			fmt.Printf("Current name: %s%s%s\n", colorValue, agent.Name, colorReset)
 			agent.Name = readUserInput(colorPrompt+"New name (Enter to keep current)"+colorReset, agent.Name)
 		case "emoji":
-			// Clear screen for editing
-			fmt.Print("\033[H\033[2J")
 			fmt.Printf("\n%s✏️  Edit Emoji%s\n", colorSection, colorReset)
 			fmt.Printf("%s═════════════%s\n\n", colorSection, colorReset)
 			fmt.Printf("Current emoji: %s%s%s\n", colorValue, agent.Emoji, colorReset)
 			agent.Emoji = readUserInput(colorPrompt+"New emoji (Enter to keep current)"+colorReset, agent.Emoji)
 		case "description":
-			// Clear screen for editing
-			fmt.Print("\033[H\033[2J")
 			fmt.Printf("\n%s✏️  Edit Description%s\n", colorSection, colorReset)
 			fmt.Printf("%s══════════════════%s\n\n", colorSection, colorReset)
 			fmt.Printf("Current description: %s%s%s\n", colorValue, agent.Description, colorReset)
 			agent.Description = readUserInput(colorPrompt+"New description (Enter to keep current)"+colorReset, agent.Description)
 		case "system":
-			// Clear screen for editing
-			fmt.Print("\033[H\033[2J")
 			fmt.Printf("\n%s✏️  Edit System Message%s\n", colorSection, colorReset)
 			fmt.Printf("%s═══════════════════%s\n\n", colorSection, colorReset)
 			fmt.Printf("%sCurrent system message:%s\n", colorPrompt, colorReset)
@@ -327,6 +336,9 @@ func editAgentFields(agent *AgentSchema) bool {
 
 // readColorInput reads a color code using a light bar menu
 func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
+	// Print separator for visual clarity without clearing screen
+	fmt.Printf("\n%s%s%s\n", colorSection, strings.Repeat("─", 50), colorReset)
+	
 	type colorOption struct {
 		name string
 		code string
