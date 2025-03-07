@@ -6,7 +6,7 @@ const (
 	baseURL = "https://raw.githubusercontent.com/lucianoayres/chatty-ai-community-store/refs/heads/main"
 	
 	// Index file path relative to base URL
-	indexPath = "index.json"
+	indexPath = "agent_index.json"
 	
 	// Agents directory path relative to base URL
 	agentsPath = "agents"
