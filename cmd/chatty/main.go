@@ -19,6 +19,7 @@ import (
 
 	"chatty/cmd/chatty/agents"
 	"chatty/cmd/chatty/builder"
+	"chatty/cmd/chatty/share"
 	"chatty/cmd/chatty/store"
 )
 
@@ -1958,6 +1959,19 @@ func main() {
 
     case "--current":
         fmt.Printf("Current agent: %s - %s\n", currentAgent.Name, currentAgent.Description)
+        return
+    case "--share":
+        if len(os.Args) < 3 {
+            fmt.Println("Error: Missing agent name. Usage: chatty --share <agent_name>")
+            fmt.Println("\nUse 'chatty --list' to see available agents.")
+            return
+        }
+
+        handler := share.NewHandler(debugMode)
+        if err := handler.ShareAgent(os.Args[2]); err != nil {
+            fmt.Printf("Error: %v\n", err)
+            os.Exit(1)
+        }
         return
     case "--select":
         if len(os.Args) < 3 {

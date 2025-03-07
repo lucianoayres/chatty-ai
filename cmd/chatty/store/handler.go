@@ -333,4 +333,23 @@ func (h *Handler) InstallAgent(name string) error {
 		colorGreen, colorReset, colorPurple, colorReset, colorBlue, agentInfo.Name, colorReset)
 
 	return nil
+}
+
+// GetIndex retrieves the store index
+func (h *Handler) GetIndex() (*StoreIndex, error) {
+	// Start loading animation
+	anim := NewStoreAnimation("Fetching store index...")
+	anim.Start()
+
+	// Fetch store index
+	index, err := h.client.FetchIndex()
+	
+	// Stop animation before handling error or returning
+	anim.Stop()
+	
+	if err != nil {
+		return nil, err
+	}
+
+	return index, nil
 } 
