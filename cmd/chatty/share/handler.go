@@ -31,6 +31,18 @@ func NewHandler(debug bool) *Handler {
 	}
 }
 
+// orderedAgentFields represents the desired order of fields in the YAML file
+type orderedAgentFields struct {
+	Name          string `yaml:"name"`
+	Author        string `yaml:"author,omitempty"`
+	SystemMessage string `yaml:"system_message"`
+	Emoji         string `yaml:"emoji"`
+	LabelColor    string `yaml:"label_color"`
+	TextColor     string `yaml:"text_color"`
+	Description   string `yaml:"description"`
+	IsDefault     bool   `yaml:"is_default"`
+}
+
 // ShareAgent handles the agent sharing process
 func (h *Handler) ShareAgent(agentName string) error {
 	// Define colors for output
@@ -85,9 +97,26 @@ func (h *Handler) ShareAgent(agentName string) error {
 	fmt.Printf("   %s✓%s Format valid\n", colorGreen, colorReset)
 	fmt.Printf("   %s✓%s Security checks passed\n\n", colorGreen, colorReset)
 
+	// Collect author information
+	fmt.Printf("%s2. Author Information%s\n", colorCyan, colorReset)
+	fmt.Printf("   Please provide your name as you want it to appear in the agent's metadata.\n")
+	fmt.Printf("   This will help the community know who created this agent.\n\n")
+	fmt.Printf("%s❓ Author name:%s ", colorCyan, colorReset)
+	
+	reader := bufio.NewReader(os.Stdin)
+	authorName, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("error reading author name: %v", err)
+	}
+	authorName = strings.TrimSpace(authorName)
+	
+	if authorName == "" {
+		return fmt.Errorf("author name is required")
+	}
+
 	// Show forking instructions
 	originalRepoURL := h.config.BaseURL
-	fmt.Printf("%s2. Repository Setup Required%s\n", colorCyan, colorReset)
+	fmt.Printf("\n%s3. Repository Setup Required%s\n", colorCyan, colorReset)
 	fmt.Printf("   Please fork this repository: %s%s%s\n\n", colorBlue, originalRepoURL, colorReset)
 	
 	fmt.Printf("%s📌 Follow these steps:%s\n", colorYellow, colorReset)
@@ -105,11 +134,10 @@ func (h *Handler) ShareAgent(agentName string) error {
 	}
 
 	// Ask for forked repository URL
-	fmt.Printf("\n%s3. Enter your forked repository URL:%s\n", colorCyan, colorReset)
+	fmt.Printf("\n%s4. Enter your forked repository URL:%s\n", colorCyan, colorReset)
 	fmt.Printf("   (Example: https://github.com/your-username/chatty-ai-community-store)\n")
 	fmt.Printf("   URL: ")
 	
-	reader := bufio.NewReader(os.Stdin)
 	forkedRepoURL, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("error reading input: %v", err)
@@ -120,16 +148,28 @@ func (h *Handler) ShareAgent(agentName string) error {
 		return fmt.Errorf("invalid repository URL provided")
 	}
 
+	// Create ordered struct with fields in desired order
+	orderedAgent := orderedAgentFields{
+		Name:          agent.Name,
+		Author:        authorName,
+		SystemMessage: agent.SystemMessage,
+		Emoji:         agent.Emoji,
+		LabelColor:    agent.LabelColor,
+		TextColor:     agent.TextColor,
+		Description:   agent.Description,
+		IsDefault:     false, // Always false for shared agents
+	}
+
+	// Marshal with ordered fields
+	agentYAML, err := yaml.Marshal(orderedAgent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent YAML: %v", err)
+	}
+
 	// Generate unique ID and prepare PR content
 	timestamp := time.Now().Format("20060102150405")
 	safeAgentName := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "-"))
 	uniqueID := fmt.Sprintf("%s-%s", safeAgentName, timestamp)
-
-	// Convert agent to YAML
-	agentYAML, err := yaml.Marshal(agent)
-	if err != nil {
-		return fmt.Errorf("failed to marshal agent YAML: %v", err)
-	}
 
 	// Create branch name
 	branchName := fmt.Sprintf("agent-submission/%s-%s",
@@ -146,7 +186,7 @@ func (h *Handler) ShareAgent(agentName string) error {
 		url.QueryEscape(branchName))
 
 	// Open browser with the new file URL
-	fmt.Printf("\n%s4. Creating agent file...%s\n", colorCyan, colorReset)
+	fmt.Printf("\n%s5. Creating agent file...%s\n", colorCyan, colorReset)
 	if err := h.openBrowser(newFileURL); err != nil {
 		fmt.Printf("\n%s⚠️  Could not open browser automatically. Please open this URL manually:%s\n%s\n",
 			colorYellow, colorReset, newFileURL)

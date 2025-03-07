@@ -164,6 +164,13 @@ func (h *Handler) ShowAgent(name string) error {
 		colorGreen, colorReset, colorPurple, colorReset, agentInfo.Description)
 	fmt.Printf("  %s•%s %sAdded:%s %s\n", 
 		colorGreen, colorReset, colorPurple, colorReset, agentInfo.CreatedAt.Format("2006-01-02"))
+	
+	// Display author if present
+	if author, ok := agentYAML["author"].(string); ok && author != "" {
+		fmt.Printf("  %s•%s %sAuthor:%s %s\n", 
+			colorGreen, colorReset, colorPurple, colorReset, author)
+	}
+	
 	fmt.Printf("  %s•%s %sStatus:%s Available in Store\n", 
 		colorGreen, colorReset, colorPurple, colorReset)
 
