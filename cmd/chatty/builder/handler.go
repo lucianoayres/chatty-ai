@@ -212,12 +212,18 @@ func readKey() ([]byte, error) {
 func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int, error) {
 	currentIndex := defaultIndex
 	
+	// Clear screen from cursor down before starting the menu
+	fmt.Print("\033[J")
+	
 	// Save initial cursor position - this will be our menu start position
 	fmt.Print("\033[s")
 	
-	// Draw the initial menu
+	// Draw the menu
 	drawMenu := func() {
-		// Clear only from current position to end of screen (not the whole screen)
+		// Restore cursor to saved position
+		fmt.Print("\033[u")
+		
+		// Clear from cursor to end of screen
 		fmt.Print("\033[J")
 		
 		// Show title with a separator line
@@ -266,15 +272,11 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 			case 65: // Up arrow
 				if currentIndex > 0 {
 					currentIndex--
-					// Return to menu start and redraw
-					fmt.Print("\033[u")
 					drawMenu()
 				}
 			case 66: // Down arrow
 				if currentIndex < len(options)-1 {
 					currentIndex++
-					// Return to menu start and redraw
-					fmt.Print("\033[u")
 					drawMenu()
 				}
 			}
@@ -285,6 +287,9 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 // editAgentFields allows the user to edit agent fields through a light bar menu
 func editAgentFields(agent *AgentSchema) bool {
 	for {
+		// Clear the screen before showing configuration
+		fmt.Print("\033[J")
+		
 		// Display current configuration
 		showAgentFields(agent)
 
@@ -330,6 +335,9 @@ func editAgentFields(agent *AgentSchema) bool {
 			fmt.Printf("%s%s%s\n", colorValue, agent.SystemMessage, colorReset)
 			agent.SystemMessage = readMultilineInput(colorPrompt+"New system message (Enter to keep current)"+colorReset, agent.SystemMessage)
 		case "tags":
+			// Clear screen before showing tag edit interface
+			fmt.Print("\033[J")
+			
 			fmt.Printf("\n%s✏️  Edit Tags%s\n", colorSection, colorReset)
 			fmt.Printf("%s═══════════%s\n\n", colorSection, colorReset)
 			
@@ -352,6 +360,9 @@ func editAgentFields(agent *AgentSchema) bool {
 			if err == nil {
 				agent.Tags = tags
 			}
+			
+			// Clear screen after tag selection to prevent duplication
+			fmt.Print("\033[J")
 		}
 	}
 }
@@ -433,7 +444,8 @@ func showColorExamples() {
 
 // showAgentFields displays the current agent configuration
 func showAgentFields(agent *AgentSchema) {
-	fmt.Printf("\n%s📝 Current Configuration%s\n", colorSection, colorReset)
+	// Add some spacing at the top
+	fmt.Printf("\n\n%s📝 Current Configuration%s\n", colorSection, colorReset)
 	fmt.Printf("%s═══════════════════%s\n\n", colorSection, colorReset)
 	
 	fmt.Printf("%s1.%s Name:        %s%s%s\n", 
@@ -536,8 +548,14 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 		fmt.Printf("\n%s%s%s\n", colorValue, string(yamlData), colorReset)
 	}
 
+	// Clear screen before showing editor
+	fmt.Print("\033[J")
+
 	// Show the generated configuration and allow editing
 	editAgentFields(agent)
+
+	// Clear screen before showing appearance options
+	fmt.Print("\033[J")
 
 	// Configure appearance
 	fmt.Printf("\n%s3️⃣ Appearance%s\n", colorSection, colorReset)
