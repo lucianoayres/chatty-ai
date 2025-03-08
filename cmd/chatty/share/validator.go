@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"chatty/cmd/chatty/agents"
 	"chatty/cmd/chatty/store"
@@ -100,13 +101,32 @@ func (v *Validator) checkNameConflicts(agent agents.AgentConfig, result *Validat
 	// Check for exact matches
 	for _, storeAgent := range index.Files {
 		if strings.EqualFold(storeAgent.Name, agent.Name) {
-			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("An agent with name '%s' already exists in the store", agent.Name))
-			break
+			result.IsValid = false
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("An agent with name '%s' already exists in the store. Please rename your agent.", agent.Name))
+			return nil
 		}
 	}
 
 	return nil
+}
+
+// CheckStoreForDuplicateName directly checks if a specific name exists in the store
+func (v *Validator) CheckStoreForDuplicateName(name string) (bool, error) {
+	// Get store index
+	index, err := v.storeHandler.GetIndex()
+	if err != nil {
+		return false, err
+	}
+
+	// Check for exact matches
+	for _, storeAgent := range index.Files {
+		if strings.EqualFold(storeAgent.Name, name) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateContent checks agent content for security and appropriateness
@@ -163,4 +183,29 @@ func (v *Validator) isValidName(name string) bool {
 	pattern := `^[a-zA-Z0-9\s\-_.,!?'"\(\)]+$`
 	matched, _ := regexp.MatchString(pattern, name)
 	return matched
+}
+
+// isValidAgentName checks if a name meets the formatting requirements for agent names
+func (v *Validator) isValidAgentName(name string) (bool, string) {
+	// Check length
+	if len(name) < 3 {
+		return false, "Agent name must be at least 3 characters long"
+	}
+	
+	if len(name) > 50 {
+		return false, "Agent name must be no longer than 50 characters"
+	}
+	
+	// Check for valid characters (letters, numbers, spaces, and simple punctuation)
+	validNameRegex := regexp.MustCompile(`^[a-zA-Z0-9 .,'\-]+$`)
+	if !validNameRegex.MatchString(name) {
+		return false, "Agent name contains invalid characters. Use only letters, numbers, spaces, and basic punctuation"
+	}
+	
+	// Ensure name starts with a letter
+	if !unicode.IsLetter([]rune(name)[0]) {
+		return false, "Agent name must start with a letter"
+	}
+	
+	return true, ""
 } 

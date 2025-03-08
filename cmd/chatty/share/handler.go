@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -76,7 +77,91 @@ func (h *Handler) ShareAgent(agentName string) error {
 	// Print validation results
 	fmt.Printf("%s1. Validating agent configuration...%s\n", colorCyan, colorReset)
 	
-	if !result.IsValid {
+	// Check if we have a name conflict error
+	nameConflict := false
+	for _, err := range result.Errors {
+		if strings.Contains(err, "already exists in the store") {
+			nameConflict = true
+			break
+		}
+	}
+	
+	// Handle name conflict by allowing user to rename
+	if nameConflict {
+		fmt.Printf("\n%s⚠️ Name Conflict Detected%s\n", colorYellow, colorReset)
+		fmt.Printf("An agent with the name '%s%s%s' already exists in the community store.\n", 
+			colorCyan, agent.Name, colorReset)
+		fmt.Printf("You must rename your agent to proceed with sharing.\n\n")
+		
+		// Prompt for a new name
+		reader := bufio.NewReader(os.Stdin)
+		originalName := agent.Name
+		
+		for {
+			fmt.Printf("%sEnter a new name for your agent:%s ", colorYellow, colorReset)
+			newName, _ := reader.ReadString('\n')
+			newName = strings.TrimSpace(newName)
+			
+			if newName == "" {
+				fmt.Printf("%s❌ Name cannot be empty. Please try again.%s\n", colorRed, colorReset)
+				continue
+			}
+			
+			// Check if the new name is valid format
+			isValid, errorMsg := h.validator.isValidAgentName(newName)
+			if !isValid {
+				fmt.Printf("%s❌ %s%s\n\n", colorRed, errorMsg, colorReset)
+				continue
+			}
+			
+			// Check if the new name also exists in the store
+			exists, err := h.validator.CheckStoreForDuplicateName(newName)
+			if err != nil {
+				fmt.Printf("%s⚠️ Warning: Could not check for duplicate names: %v%s\n", 
+					colorYellow, err, colorReset)
+			} else if exists {
+				fmt.Printf("%s❌ The name '%s' also exists in the store. Please choose another name.%s\n\n", 
+					colorRed, newName, colorReset)
+				continue
+			}
+			
+			// Update the agent name
+			agent.Name = newName
+			fmt.Printf("\n%s✓ Agent renamed to '%s'%s\n\n", colorGreen, newName, colorReset)
+			
+			// Re-validate the agent with the new name
+			result = h.validator.ValidateAgent(agent)
+			
+			// If it's now valid, proceed; otherwise, show other errors
+			if !result.IsValid {
+				fmt.Printf("%s❌ Validation failed with other issues:%s\n", colorRed, colorReset)
+				for _, err := range result.Errors {
+					if !strings.Contains(err, "already exists in the store") {
+						fmt.Printf("   - %s\n", err)
+					}
+				}
+				return fmt.Errorf("validation failed")
+			}
+			
+			// Prompt to save the agent locally with the new name
+			fmt.Printf("%sWould you like to save the agent locally with the new name? [Y/n]:%s ", 
+				colorCyan, colorReset)
+			saveResponse, _ := reader.ReadString('\n')
+			saveResponse = strings.ToLower(strings.TrimSpace(saveResponse))
+			
+			// Save locally unless the user specifically declines
+			if saveResponse != "n" && saveResponse != "no" {
+				if err := h.saveRenamedAgent(agent, originalName); err != nil {
+					fmt.Printf("%s⚠️ Warning: Could not save renamed agent locally: %v%s\n", 
+						colorYellow, err, colorReset)
+				} else {
+					fmt.Printf("%s✓ Agent saved locally with the new name%s\n\n", colorGreen, colorReset)
+				}
+			}
+			
+			break
+		}
+	} else if !result.IsValid {
 		fmt.Printf("\n%s❌ Validation failed:%s\n", colorRed, colorReset)
 		for _, err := range result.Errors {
 			fmt.Printf("   - %s\n", err)
@@ -200,21 +285,22 @@ func (h *Handler) ShareAgent(agentName string) error {
 		return fmt.Errorf("failed to marshal agent YAML: %v", err)
 	}
 
-	// Generate unique ID and prepare PR content
-	timestamp := time.Now().Format("20060102150405")
+	// Generate branch name safely
 	safeAgentName := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "-"))
-	uniqueID := fmt.Sprintf("%s-%s", safeAgentName, timestamp)
-
-	// Create branch name
+	
+	// Create branch name with date
+	timestamp := time.Now().Format("20060102")
 	branchName := fmt.Sprintf("agent-submission/%s-%s",
-		strings.ToLower(strings.ReplaceAll(agent.Name, " ", "-")),
-		time.Now().Format("20060102"))
+		safeAgentName,
+		timestamp)
 
 	// Build the new file URL in the user's fork
+	// Create filename without timestamp suffix
+	filenameSafe := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "_"))
 	newFileURL := fmt.Sprintf("%s/new/%s?filename=%s&value=%s&message=%s&branch=%s",
 		forkedRepoURL,
 		"main",
-		url.QueryEscape(fmt.Sprintf("agents/%s.yaml", uniqueID)),
+		url.QueryEscape(fmt.Sprintf("agents/%s.yaml", filenameSafe)),
 		url.QueryEscape(string(agentYAML)),
 		url.QueryEscape(fmt.Sprintf("Add new agent: %s", agent.Name)),
 		url.QueryEscape(branchName))
@@ -227,54 +313,12 @@ func (h *Handler) ShareAgent(agentName string) error {
 	}
 
 	// Show final instructions
-	fmt.Printf("\n%s✨ Almost there! Final steps:%s\n", colorGreen, colorReset)
-	fmt.Printf("\n%s📝 Complete the submission:%s\n", colorCyan, colorReset)
-	fmt.Printf("   1. Review the file contents in your browser\n")
-	fmt.Printf("   2. Click 'Commit new file' at the bottom\n")
-	fmt.Printf("   3. After committing, click 'Contribute' then 'Open pull request'\n")
-	fmt.Printf("   4. Review the pull request and click 'Create pull request'\n\n")
-	
-	fmt.Printf("%s💡 Note:%s Make sure to create the pull request to the original repository:\n", 
-		colorYellow, colorReset)
-	fmt.Printf("   %s%s%s\n\n", colorBlue, originalRepoURL, colorReset)
+	fmt.Printf("\n%s6. Final Instructions%s\n", colorCyan, colorReset)
+	fmt.Printf("   - Please wait for the repository maintainers to review your submission.\n")
+	fmt.Printf("   - Once approved, your agent will be added to the community store.\n")
+	fmt.Printf("   - Thank you for contributing to the community!\n\n")
 
 	return nil
-}
-
-// generatePRURL creates the GitHub PR URL with all necessary parameters
-func (h *Handler) generatePRURL(agent agents.AgentConfig, uniqueID string) (string, error) {
-	// Convert agent to YAML
-	agentYAML, err := yaml.Marshal(agent)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal agent YAML: %v", err)
-	}
-
-	// Create branch name
-	branchName := fmt.Sprintf(h.config.BranchName, 
-		strings.ToLower(strings.ReplaceAll(agent.Name, " ", "-")),
-		time.Now().Format("20060102"))
-
-	// Create commit message
-	commitMsg := fmt.Sprintf(h.config.CommitMsg, agent.Name)
-
-	// Format tags for PR description
-	tagsText := "- " + strings.Join(agent.Tags, "\n- ")
-
-	// Create PR description
-	prBody := fmt.Sprintf(h.config.PRTemplate, agent.Description, tagsText, string(agentYAML))
-
-	// Build the URL - using the fork-based workflow
-	baseURL := fmt.Sprintf("%s/fork", h.config.BaseURL)
-	params := url.Values{}
-	// After fork, redirect to new file creation
-	params.Add("quick_pull", "1")
-	params.Add("filename", fmt.Sprintf("agents/%s.yaml", uniqueID))
-	params.Add("value", string(agentYAML))
-	params.Add("message", commitMsg)
-	params.Add("description", prBody)
-	params.Add("branch", branchName)
-
-	return fmt.Sprintf("%s?%s", baseURL, params.Encode()), nil
 }
 
 // openBrowser opens the default browser with the given URL
@@ -293,4 +337,84 @@ func (h *Handler) openBrowser(url string) error {
 	}
 
 	return err
+}
+
+// saveRenamedAgent saves the agent with its new name to the user's agents directory
+func (h *Handler) saveRenamedAgent(agent agents.AgentConfig, originalName string) error {
+	// Get the home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %v", err)
+	}
+	
+	// Build the path to the agents directory
+	agentsDir := filepath.Join(homeDir, ".chatty", "agents")
+	
+	// Create the new filename
+	newFilename := fmt.Sprintf("%s.yaml", strings.ToLower(strings.ReplaceAll(agent.Name, " ", "_")))
+	newFilePath := filepath.Join(agentsDir, newFilename)
+	
+	// Marshal the agent to YAML
+	agentYAML, err := yaml.Marshal(agent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent YAML: %v", err)
+	}
+	
+	// Write to the new file
+	if err := os.WriteFile(newFilePath, agentYAML, 0644); err != nil {
+		return fmt.Errorf("failed to write renamed agent file: %v", err)
+	}
+	
+	// Find and delete the original file
+	originalFilename := fmt.Sprintf("%s.yaml", strings.ToLower(strings.ReplaceAll(originalName, " ", "_")))
+	originalFilePath := filepath.Join(agentsDir, originalFilename)
+	
+	// Delete the original file (ignore errors if it doesn't exist)
+	_ = os.Remove(originalFilePath)
+	
+	// Make sure the agents are reloaded
+	agents.LoadAgents()
+	
+	return nil
+}
+
+// generatePRURL creates the GitHub PR URL with all necessary parameters
+func (h *Handler) generatePRURL(agent agents.AgentConfig) (string, error) {
+	// Convert agent to YAML
+	agentYAML, err := yaml.Marshal(agent)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal agent YAML: %v", err)
+	}
+
+	// Create branch name with date (but not for filename)
+	safeAgentName := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "-"))
+	timestamp := time.Now().Format("20060102")
+	branchName := fmt.Sprintf(h.config.BranchName, safeAgentName, timestamp)
+
+	// Create commit message
+	commitMsg := fmt.Sprintf(h.config.CommitMsg, agent.Name)
+
+	// Format tags for PR description
+	tagsText := "- " + strings.Join(agent.Tags, "\n- ")
+
+	// Create PR description
+	prBody := fmt.Sprintf(h.config.PRTemplate, agent.Description, tagsText, string(agentYAML))
+
+	// Build the URL - using the fork-based workflow
+	baseURL := fmt.Sprintf("%s/fork", h.config.BaseURL)
+	params := url.Values{}
+	
+	// Create filename without timestamp suffix
+	safeFilename := strings.ToLower(strings.ReplaceAll(agent.Name, " ", "_"))
+	filename := fmt.Sprintf("agents/%s.yaml", safeFilename)
+	
+	// After fork, redirect to new file creation
+	params.Add("quick_pull", "1")
+	params.Add("filename", filename)
+	params.Add("value", string(agentYAML))
+	params.Add("message", commitMsg)
+	params.Add("description", prBody)
+	params.Add("branch", branchName)
+
+	return fmt.Sprintf("%s?%s", baseURL, params.Encode()), nil
 } 
