@@ -48,93 +48,78 @@ func (h *Handler) LoadStoreConfigs() {
 	}
 }
 
+// CategoryResult holds both the full list of agents matching a category and the displayed subset
+type CategoryResult struct {
+	All      []AgentInfo // All agents that match this category
+	Filtered []AgentInfo // Agents after applying maxItems limit
+}
+
 // categorizeAgents groups agents by their categories based on tags
-func (h *Handler) categorizeAgents(agents []AgentInfo) map[string][]AgentInfo {
-	categorized := make(map[string][]AgentInfo)
+func (h *Handler) categorizeAgents(agents []AgentInfo) map[string]CategoryResult {
+	categorized := make(map[string]CategoryResult)
 	
 	// Always include "All Agents" category
-	categorized["All Agents"] = agents
+	categorized["All Agents"] = CategoryResult{
+		All:      agents,
+		Filtered: agents,
+	}
 	
 	// If no store config is available, return just the "All Agents" category
-	if h.storeConfig == nil {
+	if h.storeConfig == nil || len(h.storeConfig.StorefrontSettings.Categories) == 0 {
 		return categorized
-	}
-	
-	// Process "New Arrivals" category if enabled
-	if h.storeConfig.StorefrontSettings.NewItemsConfig.Enabled {
-		newAgents := h.filterNewAgents(agents)
-		if len(newAgents) > 0 {
-			categorized["New Arrivals"] = newAgents
-		}
-	}
-	
-	// Process "Featured" category if enabled
-	if h.storeConfig.StorefrontSettings.FeaturedItemsConfig.Enabled {
-		// Filter agents with "featured" tag
-		var featuredAgents []AgentInfo
-		for _, agent := range agents {
-			for _, tag := range agent.Tags {
-				if tag == "featured" {
-					featuredAgents = append(featuredAgents, agent)
-					break
-				}
-			}
-			
-			// Respect the max items limit
-			if len(featuredAgents) >= h.storeConfig.StorefrontSettings.FeaturedItemsConfig.MaxItems {
-				break
-			}
-		}
-		
-		if len(featuredAgents) > 0 {
-			categorized["Featured"] = featuredAgents
-		}
 	}
 	
 	// Process configured categories from store settings
 	for _, category := range h.storeConfig.StorefrontSettings.Categories {
-		// Skip "New Arrivals" and "Featured" as they are handled separately
-		if category.Name == "New Arrivals" || category.Name == "Featured" {
+		// Skip disabled categories
+		if !category.Enabled {
 			continue
 		}
 		
-		categoryAgents := h.filterAgentsByTags(agents, category.Tags)
-		if len(categoryAgents) > 0 {
-			categorized[category.Name] = categoryAgents
+		var allAgents []AgentInfo
+		
+		// Special handling for time-based filtering (like New Arrivals)
+		if category.TimeWindowDays > 0 {
+			// Filter by time window
+			cutoffDate := time.Now().AddDate(0, 0, -category.TimeWindowDays)
+			
+			for _, agent := range agents {
+				if agent.CreatedAt.After(cutoffDate) {
+					allAgents = append(allAgents, agent)
+				}
+			}
+		} else {
+			// Standard tag-based filtering
+			allAgents = h.filterAgentsByTags(agents, category.Tags)
+		}
+		
+		// Skip empty categories
+		if len(allAgents) == 0 {
+			continue
+		}
+		
+		// Apply max items limit to get filtered list
+		filteredAgents := allAgents
+		if category.MaxItems > 0 && len(allAgents) > category.MaxItems {
+			filteredAgents = allAgents[:category.MaxItems]
+		}
+		
+		categorized[category.Name] = CategoryResult{
+			All:      allAgents,
+			Filtered: filteredAgents,
 		}
 	}
 	
 	// Add "Uncategorized" for agents without tags
 	uncategorized := h.filterUncategorizedAgents(agents)
 	if len(uncategorized) > 0 {
-		categorized["Uncategorized"] = uncategorized
+		categorized["Uncategorized"] = CategoryResult{
+			All:      uncategorized,
+			Filtered: uncategorized,
+		}
 	}
 	
 	return categorized
-}
-
-// filterNewAgents returns agents added within the configured time window
-func (h *Handler) filterNewAgents(agents []AgentInfo) []AgentInfo {
-	if h.storeConfig == nil {
-		return nil
-	}
-	
-	config := h.storeConfig.StorefrontSettings.NewItemsConfig
-	cutoffDate := time.Now().AddDate(0, 0, -config.TimeWindowDays)
-	
-	var newAgents []AgentInfo
-	for _, agent := range agents {
-		if agent.CreatedAt.After(cutoffDate) {
-			newAgents = append(newAgents, agent)
-		}
-		
-		// Respect the max items limit
-		if len(newAgents) >= config.MaxItems {
-			break
-		}
-	}
-	
-	return newAgents
 }
 
 // filterAgentsByTags returns agents that have any of the specified tags
@@ -143,26 +128,26 @@ func (h *Handler) filterAgentsByTags(agents []AgentInfo, filterTags []string) []
 		return nil
 	}
 	
-	var filtered []AgentInfo
+	var filteredAgents []AgentInfo
+	
 	for _, agent := range agents {
-		// Check if the agent has any of the filter tags
-		for _, filterTag := range filterTags {
-			hasTag := false
-			for _, agentTag := range agent.Tags {
-				if agentTag == filterTag {
-					hasTag = true
+		// Check if agent has any of the specified tags
+		for _, tag := range agent.Tags {
+			for _, filterTag := range filterTags {
+				if strings.EqualFold(tag, filterTag) {
+					filteredAgents = append(filteredAgents, agent)
 					break
 				}
 			}
 			
-			if hasTag {
-				filtered = append(filtered, agent)
-				break  // Break after adding the agent once
+			// Once agent is matched, break inner loop to avoid duplicates
+			if len(filteredAgents) > 0 && filteredAgents[len(filteredAgents)-1].ID == agent.ID {
+				break
 			}
 		}
 	}
 	
-	return filtered
+	return filteredAgents
 }
 
 // filterUncategorizedAgents returns agents that don't have any tags
@@ -178,33 +163,21 @@ func (h *Handler) filterUncategorizedAgents(agents []AgentInfo) []AgentInfo {
 
 // getCategoryDescription returns the description for a category
 func (h *Handler) getCategoryDescription(categoryName string) string {
-	if h.storeConfig == nil {
-		return ""
-	}
-	
-	// Handle special categories
-	if categoryName == "All Agents" {
+	// Handle special built-in categories
+	if strings.EqualFold(categoryName, "All Agents") {
 		return "Complete list of all available agents"
 	}
 	
-	if categoryName == "Uncategorized" {
-		return "Agents without specific categorization"
+	if strings.EqualFold(categoryName, "Uncategorized") {
+		return "Agents without specific category tags"
 	}
 	
-	// Special handling for "Featured" category
-	if strings.EqualFold(categoryName, "Featured") {
+	// For other categories, look up in the store configuration
+	if h.storeConfig != nil {
 		for _, category := range h.storeConfig.StorefrontSettings.Categories {
-			if strings.EqualFold(category.Name, "Featured") {
+			if strings.EqualFold(category.Name, categoryName) {
 				return category.Description
 			}
-		}
-		return "Handpicked agents recommended for all users"
-	}
-	
-	// Look up from configured categories with case-insensitive matching
-	for _, category := range h.storeConfig.StorefrontSettings.Categories {
-		if strings.EqualFold(category.Name, categoryName) {
-			return category.Description
 		}
 	}
 	
@@ -293,16 +266,16 @@ func (h *Handler) ListAgents() error {
 	
 	// Display agents by category
 	for _, category := range categoryNames {
-		agents := categorizedAgents[category]
+		categoryResult := categorizedAgents[category]
 		
 		// Skip empty categories
-		if len(agents) > 0 {
+		if len(categoryResult.All) > 0 {
 			// Get category description
 			description := h.getCategoryDescription(category)
 			
-			// Display category header
+			// Display category header with TOTAL count from All
 			fmt.Printf("\n%s📂 %s%s%s (%d)%s\n", 
-				colorCyan, colorCyan, category, colorReset, len(agents), colorReset)
+				colorCyan, colorCyan, category, colorReset, len(categoryResult.All), colorReset)
 			
 			// Display category description if available
 			if description != "" {
@@ -312,8 +285,8 @@ func (h *Handler) ListAgents() error {
 			// Print a separator line under the category header
 			fmt.Printf("%s%s%s\n", colorCyan, strings.Repeat("━", 50), colorReset)
 			
-			// Display agents in this category
-			for _, agent := range agents {
+			// Display agents in this category (filtered subset)
+			for _, agent := range categoryResult.Filtered {
 				// Print each agent with emoji, name, and description
 				fmt.Printf("  %s %s%s%s%s %s%s%s\n",
 					agent.Emoji,
@@ -323,6 +296,15 @@ func (h *Handler) ListAgents() error {
 					h.formatAuthor(agent.Author),
 					colorWhite,
 					agent.Description,
+					colorReset)
+			}
+			
+			// If we're showing a limited set, add a note
+			if len(categoryResult.Filtered) < len(categoryResult.All) {
+				fmt.Printf("\n  %s... and %d more (use --category \"%s\" to see all)%s\n", 
+					colorGray, 
+					len(categoryResult.All) - len(categoryResult.Filtered),
+					category,
 					colorReset)
 			}
 		}
@@ -470,11 +452,13 @@ func (h *Handler) ListAgentsByCategory(categoryName string) error {
 	// Find the matching category (case-insensitive)
 	var matchedCategory string
 	var agents []AgentInfo
+	var totalCount int
 	
 	for category, categoryAgents := range categorizedAgents {
 		if strings.EqualFold(category, categoryName) {
 			matchedCategory = category
-			agents = categoryAgents
+			agents = categoryAgents.Filtered // Use filtered list for display
+			totalCount = len(categoryAgents.All) // Get total count for header
 			break
 		}
 	}
@@ -493,7 +477,7 @@ func (h *Handler) ListAgentsByCategory(categoryName string) error {
 		// Sort categories alphabetically
 		var categories []string
 		for category := range categorizedAgents {
-			if category != "All Agents" && len(categorizedAgents[category]) > 0 {
+			if category != "All Agents" && len(categorizedAgents[category].All) > 0 {
 				categories = append(categories, category)
 			}
 		}
@@ -501,7 +485,7 @@ func (h *Handler) ListAgentsByCategory(categoryName string) error {
 		
 		// Display available categories
 		for _, category := range categories {
-			fmt.Printf("  • %s (%d agents)\n", category, len(categorizedAgents[category]))
+			fmt.Printf("  • %s (%d agents)\n", category, len(categorizedAgents[category].All))
 		}
 		
 		fmt.Println("\nTry one of these categories with:")
@@ -515,7 +499,7 @@ func (h *Handler) ListAgentsByCategory(categoryName string) error {
 	
 	// Display header
 	fmt.Printf("\n%s📂 Category: %s%s%s (%d agents)%s\n", 
-		colorMagenta, colorYellow, matchedCategory, colorReset, len(agents), colorReset)
+		colorMagenta, colorYellow, matchedCategory, colorReset, totalCount, colorReset)
 	
 	// Display category description if available
 	if description != "" {
@@ -539,6 +523,13 @@ func (h *Handler) ListAgentsByCategory(categoryName string) error {
 			colorReset)
 		
 		fmt.Println()
+	}
+	
+	// If we're showing a limited set, display a notice
+	if len(agents) < totalCount {
+		fmt.Printf("%sShowing %d of %d agents. For complete list:%s\n", 
+			colorGray, len(agents), totalCount, colorReset)
+		fmt.Printf("  chatty --store --category \"%s\" --all\n\n", matchedCategory)
 	}
 	
 	// Display help section
@@ -861,15 +852,23 @@ func (h *Handler) SearchAgents(query string) error {
 	colorWhite := "\033[1;37m"  // Bright white for better visibility
 	colorGray := "\033[1;37m"   // Changed from dark gray to light gray for better readability
 	
+	// Start loading animation
+	anim := NewStoreAnimation("Searching agents...")
+	anim.Start()
+	
 	// Convert query to lowercase for case-insensitive search
 	searchTerm := strings.ToLower(query)
 
 	// Fetch index
 	index, err := h.GetIndex()
 	if err != nil {
+		anim.Stop()
 		return err
 	}
-
+	
+	// Stop animation before displaying results
+	anim.Stop()
+	
 	// Filter agents by search term
 	var matchedAgents []AgentInfo
 	for _, agent := range index.Files {
@@ -907,14 +906,23 @@ func (h *Handler) SearchAgents(query string) error {
 		return matchedAgents[i].Name < matchedAgents[j].Name
 	})
 	
+	// Determine how many agents to display
+	totalCount := len(matchedAgents)
+	displayLimit := 20 // Limit display to 20 agents by default
+	displayCount := totalCount
+	if totalCount > displayLimit {
+		displayCount = displayLimit
+	}
+	
 	// Display header with search term
 	fmt.Printf("\n%s🔍 Search results for: '%s' (%d agents found)%s\n", 
-		colorMagenta, query, len(matchedAgents), colorReset)
+		colorMagenta, query, totalCount, colorReset)
 	fmt.Printf("%s%s%s\n\n", 
 		colorMagenta, strings.Repeat("━", 50), colorReset)
 	
-	// Display matched agents
-	for _, agent := range matchedAgents {
+	// Display matched agents (limited set)
+	for i := 0; i < displayCount; i++ {
+		agent := matchedAgents[i]
 		// Print each agent with emoji, name, and description
 		fmt.Printf("  %s %s%s%s%s %s%s%s\n",
 			agent.Emoji,
@@ -947,9 +955,15 @@ func (h *Handler) SearchAgents(query string) error {
 		fmt.Println()
 	}
 	
+	// If only showing a subset, display a note
+	if displayCount < totalCount {
+		fmt.Printf("%sShowing %d of %d results. Refine your search for more specific results.%s\n\n",
+			colorGray, displayCount, totalCount, colorReset)
+	}
+	
 	// Display help section
 	fmt.Printf("%s💡 Quick Actions%s\n", colorCyan, colorReset)
-	fmt.Printf("%s%s%s\n", colorCyan, strings.Repeat("─", 50), colorReset)
+	fmt.Printf("%s%s%s\n", colorCyan, strings.Repeat("━", 50), colorReset)
 	fmt.Printf("   %s1.%s %sView agent details:%s chatty --show %s\"Agent Name\"%s\n", 
 		colorGreen, colorReset, colorYellow, colorReset, colorBlue, colorReset)
 	fmt.Printf("   %s2.%s %sInstall an agent:%s chatty --install %s\"Agent Name\"%s\n", 

@@ -31,29 +31,17 @@ type StoreConfig struct {
 
 // StorefrontSettings contains the configuration for the store display
 type StorefrontSettings struct {
-	NewItemsConfig     NewItemsConfig     `json:"newItemsConfig"`
-	FeaturedItemsConfig FeaturedItemsConfig `json:"featuredItemsConfig"`
-	Categories         []CategoryConfig   `json:"categories"`
-}
-
-// NewItemsConfig defines settings for the "New" category
-type NewItemsConfig struct {
-	Enabled        bool `json:"enabled"`
-	MaxItems       int  `json:"maxItems"`
-	TimeWindowDays int  `json:"timeWindowDays"`
-}
-
-// FeaturedItemsConfig defines settings for the "Featured" category
-type FeaturedItemsConfig struct {
-	Enabled  bool `json:"enabled"`
-	MaxItems int  `json:"maxItems"`
+	Categories []CategoryConfig `json:"categories"`
 }
 
 // CategoryConfig defines a category in the store
 type CategoryConfig struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	Tags           []string `json:"tags"`
+	Enabled        bool     `json:"enabled"`
+	MaxItems       int      `json:"maxItems,omitempty"`
+	TimeWindowDays int      `json:"timeWindowDays,omitempty"`
 }
 
 // TagsConfig represents the available tags configuration
