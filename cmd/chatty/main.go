@@ -66,6 +66,7 @@ const (
     // Core configuration
     ollamaBaseURL = "http://localhost:11434"  // Base URL for Ollama API
     ollamaURLPath = "/api/chat"              // API endpoint path
+    keepAlive = "24h"
     historyDir    = ".chatty"               // Directory to store chat histories
     configFile    = "config.json"           // File to store current agent selection
 
@@ -1305,7 +1306,7 @@ func handleSingleAgentChat(agentName string, starter string, saveFile string) er
     // Show exit message at the beginning of the chat
     fmt.Println()
     fmt.Printf("Press Enter with empty message to end the conversation")
-    fmt.Println("\n")
+    fmt.Println()
     
     // Initialize conversation log
     var conversationLog strings.Builder
