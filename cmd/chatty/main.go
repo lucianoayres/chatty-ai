@@ -33,6 +33,7 @@ type ChatRequest struct {
     Model    string    `json:"model"`
     Messages []Message `json:"messages"`
     Stream   bool      `json:"stream"`
+    KeepAlive string   `json:"keep_alive,omitempty"`
 }
 
 type ChatResponse struct {
@@ -905,6 +906,7 @@ func handleMultiAgentConversation(config ConversationConfig) error {
                 Model:    agents.GetCurrentModel(),
                 Messages: agentHistory,
                 Stream:   true,
+                KeepAlive: keepAlive,
             }
 
             jsonData, err := json.Marshal(chatReq)
@@ -1389,6 +1391,7 @@ func handleSingleAgentChat(agentName string, starter string, saveFile string) er
                 Model:    agents.GetCurrentModel(),
                 Messages: history,
                 Stream:   true,
+                KeepAlive: keepAlive,
             }
             
             jsonData, err := json.Marshal(chatReq)
@@ -2406,6 +2409,7 @@ func main() {
         Model:    agents.GetCurrentModel(),
         Messages: newHistory,
         Stream:   true,
+        KeepAlive: keepAlive,
     }
 
     jsonData, err := json.Marshal(chatReq)
