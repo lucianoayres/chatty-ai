@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -408,7 +409,7 @@ func (a *ConversationAnimation) stopAnimation() {
 // Add this new function at the top level
 func checkOllamaReady() error {
     client := &http.Client{Timeout: 5 * time.Second}
-    resp, err := client.Get(ollamaBaseURL + "/api/tags")
+    resp, err := client.Get(ollamaBaseURL + ollamaURLPath)
     if err != nil {
         if os.IsTimeout(err) || strings.Contains(err.Error(), "connection refused") {
             return fmt.Errorf("ollama is not ready. please ensure 'ollama serve' is running and the service is fully initialized")
@@ -1106,6 +1107,34 @@ func isChattyInitialized() bool {
 // Initialize chatty environment
 func initializeChatty() error {
     fmt.Println("\n🚀 Initializing Chatty environment...")
+    
+    // Preload the LLM model
+    agentConfig, err := agents.GetCurrentConfig()
+    if err != nil {
+        fmt.Printf("\n⚠️ Warning: Could not get agent config: %v\n", err)
+        return err
+    }
+    
+    curlCmd := exec.Command("curl", ollamaBaseURL+"/api/generate", "-d", 
+        fmt.Sprintf(`{"model": "%s", "keep_alive": -1}`, agentConfig.Model))
+    
+    if debugMode {
+        fmt.Printf("\nExecuting: curl %s/api/generate -d '{\"model\": \"%s\", \"keep_alive\": -1}'\n", 
+            ollamaBaseURL, agentConfig.Model)
+        curlOut, err := curlCmd.CombinedOutput()
+        if err != nil {
+            fmt.Printf("\n⚠️ Warning: Failed to preload model: %v\n%s\n", err, string(curlOut))
+        } else {
+            fmt.Printf("\n✓ Response: %s\n", string(curlOut))
+        }
+    } else {
+        err := curlCmd.Run()
+        if err != nil {
+            fmt.Printf("\n⚠️ Warning: Failed to preload model: %v\n", err)
+        } else {
+            fmt.Printf("%s✓%s Model preloaded\n", "\033[32m", colorReset)
+        }
+    }
     
     // Create necessary directories and files
     homeDir, err := os.UserHomeDir()
