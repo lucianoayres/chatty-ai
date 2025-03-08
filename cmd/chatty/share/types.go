@@ -17,7 +17,7 @@ type ShareConfig struct {
 func DefaultShareConfig() ShareConfig {
 	return ShareConfig{
 		BaseURL:     "https://github.com/lucianoayres/chatty-ai-community-store",
-		PRTemplate:  "## Agent Submission\n\n### Description\n%s\n\n### Preview\n```yaml\n%s\n```",
+		PRTemplate:  "## Agent Submission\n\n### Description\n%s\n\n### Tags\n%s\n\n### Preview\n```yaml\n%s\n```",
 		BranchName:  "agent-submission/%s-%s",
 		CommitMsg:   "Add new agent: %s",
 	}

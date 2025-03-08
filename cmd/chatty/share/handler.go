@@ -33,14 +33,15 @@ func NewHandler(debug bool) *Handler {
 
 // orderedAgentFields represents the desired order of fields in the YAML file
 type orderedAgentFields struct {
-	Name          string `yaml:"name"`
-	Author        string `yaml:"author,omitempty"`
-	SystemMessage string `yaml:"system_message"`
-	Emoji         string `yaml:"emoji"`
-	LabelColor    string `yaml:"label_color"`
-	TextColor     string `yaml:"text_color"`
-	Description   string `yaml:"description"`
-	IsDefault     bool   `yaml:"is_default"`
+	Name          string   `yaml:"name"`
+	Author        string   `yaml:"author,omitempty"`
+	SystemMessage string   `yaml:"system_message"`
+	Emoji         string   `yaml:"emoji"`
+	LabelColor    string   `yaml:"label_color"`
+	TextColor     string   `yaml:"text_color"`
+	Description   string   `yaml:"description"`
+	Tags          []string `yaml:"tags"`
+	IsDefault     bool     `yaml:"is_default"`
 }
 
 // ShareAgent handles the agent sharing process
@@ -78,24 +79,56 @@ func (h *Handler) ShareAgent(agentName string) error {
 	if !result.IsValid {
 		fmt.Printf("\n%s❌ Validation failed:%s\n", colorRed, colorReset)
 		for _, err := range result.Errors {
-			fmt.Printf("   • %s\n", err)
+			fmt.Printf("   - %s\n", err)
 		}
-		return fmt.Errorf("agent validation failed")
+		
+		// If tags are missing, show specific guidance
+		tagError := false
+		for _, err := range result.Errors {
+			if strings.Contains(err, "tag") {
+				tagError = true
+				break
+			}
+		}
+		
+		if tagError {
+			fmt.Printf("\n%s📌 Tag Requirements:%s\n", colorYellow, colorReset)
+			fmt.Printf("   - Each agent must have 1-5 tags\n")
+			fmt.Printf("   - Tags can be added through the 'Edit tags' option in the agent editor\n")
+			fmt.Printf("   - Run '%schatty --build%s' to create or edit an agent with tags\n\n", colorBlue, colorReset)
+		}
+		
+		fmt.Println("\nPlease fix these issues and try again.")
+		return fmt.Errorf("validation failed")
 	}
 
-	// Print any warnings
-	if len(result.Warnings) > 0 {
+	// If there were warnings but validation passed
+	if len(result.Warnings) > 0 && result.IsValid {
 		fmt.Printf("\n%s⚠️  Warnings:%s\n", colorYellow, colorReset)
-		for _, warn := range result.Warnings {
-			fmt.Printf("   • %s\n", warn)
+		for _, warning := range result.Warnings {
+			fmt.Printf("   - %s\n", warning)
 		}
-		fmt.Println()
 	}
 
-	// Show success checkmarks
-	fmt.Printf("   %s✓%s Required fields present\n", colorGreen, colorReset)
-	fmt.Printf("   %s✓%s Format valid\n", colorGreen, colorReset)
-	fmt.Printf("   %s✓%s Security checks passed\n\n", colorGreen, colorReset)
+	// If validation is successful
+	if result.IsValid {
+		fmt.Printf("   %s✓%s Required fields present\n", colorGreen, colorReset)
+		fmt.Printf("   %s✓%s Format valid\n", colorGreen, colorReset)
+		fmt.Printf("   %s✓%s Security checks passed\n", colorGreen, colorReset)
+		fmt.Printf("   %s✓%s Tags valid (%d tags)\n\n", colorGreen, colorReset, len(agent.Tags))
+
+		// Show tags in validation success
+		if len(agent.Tags) > 0 {
+			fmt.Printf("   %sTags:%s ", colorCyan, colorReset)
+			for i, tag := range agent.Tags {
+				if i > 0 {
+					fmt.Print(", ")
+				}
+				fmt.Printf("%s%s%s", colorBlue, tag, colorReset)
+			}
+			fmt.Println("\n")
+		}
+	}
 
 	// Collect author information
 	fmt.Printf("%s2. Author Information%s\n", colorCyan, colorReset)
@@ -157,6 +190,7 @@ func (h *Handler) ShareAgent(agentName string) error {
 		LabelColor:    agent.LabelColor,
 		TextColor:     agent.TextColor,
 		Description:   agent.Description,
+		Tags:          agent.Tags,
 		IsDefault:     false, // Always false for shared agents
 	}
 
@@ -223,8 +257,11 @@ func (h *Handler) generatePRURL(agent agents.AgentConfig, uniqueID string) (stri
 	// Create commit message
 	commitMsg := fmt.Sprintf(h.config.CommitMsg, agent.Name)
 
+	// Format tags for PR description
+	tagsText := "- " + strings.Join(agent.Tags, "\n- ")
+
 	// Create PR description
-	prBody := fmt.Sprintf(h.config.PRTemplate, agent.Description, string(agentYAML))
+	prBody := fmt.Sprintf(h.config.PRTemplate, agent.Description, tagsText, string(agentYAML))
 
 	// Build the URL - using the fork-based workflow
 	baseURL := fmt.Sprintf("%s/fork", h.config.BaseURL)

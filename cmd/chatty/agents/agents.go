@@ -47,14 +47,15 @@ type Config struct {
 
 // AgentConfig holds all configuration for an agent's identity and appearance
 type AgentConfig struct {
-	Name          string `yaml:"name"`
-	SystemMessage string `yaml:"system_message"`
-	Emoji         string `yaml:"emoji"`
-	LabelColor    string `yaml:"label_color"`
-	TextColor     string `yaml:"text_color"`
-	Description   string `yaml:"description"`
-	IsDefault     bool   `yaml:"is_default"`
-	Source        string `yaml:"-"` // Indicates if agent is built-in or user-defined
+	Name          string   `yaml:"name"`
+	SystemMessage string   `yaml:"system_message"`
+	Emoji         string   `yaml:"emoji"`
+	LabelColor    string   `yaml:"label_color"`
+	TextColor     string   `yaml:"text_color"`
+	Description   string   `yaml:"description"`
+	IsDefault     bool     `yaml:"is_default"`
+	Tags          []string `yaml:"tags,omitempty"`
+	Source        string   `yaml:"-"` // Indicates if agent is built-in or user-defined
 }
 
 // Cache for agents with mutex for thread safety

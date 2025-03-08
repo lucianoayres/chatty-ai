@@ -76,6 +76,15 @@ func (v *Validator) validateRequiredFields(agent agents.AgentConfig, result *Val
 	if len([]rune(agent.Emoji)) != 1 {
 		result.Errors = append(result.Errors, "Emoji must be a single character")
 	}
+	
+	// Validate tags
+	if len(agent.Tags) < 1 {
+		result.Errors = append(result.Errors, "At least one tag is required")
+	}
+	
+	if len(agent.Tags) > 5 {
+		result.Errors = append(result.Errors, "Maximum of 5 tags allowed")
+	}
 
 	return nil
 }
