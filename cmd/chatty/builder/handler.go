@@ -96,6 +96,7 @@ func startAnimation() *Animation {
 			default:
 				// Update the prefix with current frame
 				prefix = colorAccent + frames[frameIndex] + " " + colorReset
+				frameIndex = (frameIndex + 1) % len(frames)
 				
 				// Change message every 15 seconds
 				if time.Since(lastMessageChange) >= 15*time.Second {
@@ -124,6 +125,7 @@ func startAnimation() *Animation {
 								messageIndices[i], messageIndices[j] = messageIndices[j], messageIndices[i]
 							}
 						}
+						time.Sleep(50 * time.Millisecond) // Add a slight pause between messages
 					}
 				} else {
 					// Type the new message character by character
@@ -136,12 +138,14 @@ func startAnimation() *Animation {
 							prefix,
 							currentMessage)
 						time.Sleep(30 * time.Millisecond) // Normal typing speed
+					} else {
+						// When at the end of a message, keep the spinner moving
+						fmt.Printf("\r%s\r%s%s", 
+							strings.Repeat(" ", len(prefix) + len(currentMessage) + 2),
+							prefix,
+							currentMessage)
+						time.Sleep(80 * time.Millisecond) // Spinner-only speed
 					}
-				}
-
-				frameIndex = (frameIndex + 1) % len(frames)
-				if !isErasing && len(currentMessage) == len(messages[messageIndices[currentIndex]]) {
-					time.Sleep(80 * time.Millisecond) // Normal spinner speed
 				}
 			}
 		}

@@ -93,9 +93,11 @@ func SelectTags(debug bool) ([]string, error) {
 		for {
 			select {
 			case <-done:
+				// Ensure one last update to clear any spinner remnants
+				fmt.Printf("\r%sLoading tags... Done!%s     ", colorValue, colorReset)
 				return
 			default:
-				fmt.Printf("\r%sLoading tags... %s%s", colorValue, spinner[i], colorReset)
+				fmt.Printf("\r%sLoading tags... %s%s  ", colorValue, spinner[i], colorReset)
 				time.Sleep(100 * time.Millisecond)
 				i = (i + 1) % len(spinner)
 			}
@@ -105,8 +107,14 @@ func SelectTags(debug bool) ([]string, error) {
 	// Fetch tags from the remote URL
 	tagsConfig, err := FetchTagsConfig(debug)
 	
+	// Small delay to ensure spinner completes its current cycle
+	time.Sleep(150 * time.Millisecond)
+	
 	// Stop spinner
 	done <- true
+	
+	// Give the goroutine time to process the done signal
+	time.Sleep(50 * time.Millisecond)
 	close(done)
 	
 	// Clear the loading message
