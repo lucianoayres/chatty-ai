@@ -250,7 +250,10 @@ func (h *Handler) ListAgents() error {
 	// Get category names and sort them
 	var categoryNames []string
 	for category := range categorizedAgents {
-		categoryNames = append(categoryNames, category)
+		// Skip the "All Agents" category - we won't display it
+		if category != "All Agents" {
+			categoryNames = append(categoryNames, category)
+		}
 	}
 	
 	// Apply custom sorting to categories
@@ -265,7 +268,6 @@ func (h *Handler) ListAgents() error {
 		}
 		
 		// Special handling for built-in categories
-		categoryPriorities["All Agents"] = 999
 		categoryPriorities["Uncategorized"] = 998
 		
 		// Get priorities for the two categories being compared
