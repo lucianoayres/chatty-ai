@@ -13,13 +13,14 @@ import (
 
 // AgentSchema represents the JSON schema for agent configuration
 type AgentSchema struct {
-	Name          string `json:"name" yaml:"name"`
-	SystemMessage string `json:"system_message" yaml:"system_message"`
-	Emoji         string `json:"emoji" yaml:"emoji"`
-	LabelColor    string `json:"label_color" yaml:"label_color"`
-	TextColor     string `json:"text_color" yaml:"text_color"`
-	Description   string `json:"description" yaml:"description"`
-	IsDefault     bool   `json:"is_default" yaml:"is_default"`
+	Name          string   `json:"name" yaml:"name"`
+	SystemMessage string   `json:"system_message" yaml:"system_message"`
+	Emoji         string   `json:"emoji" yaml:"emoji"`
+	LabelColor    string   `json:"label_color" yaml:"label_color"`
+	TextColor     string   `json:"text_color" yaml:"text_color"`
+	Description   string   `json:"description" yaml:"description"`
+	IsDefault     bool     `json:"is_default" yaml:"is_default"`
+	Tags          []string `json:"tags" yaml:"tags"`
 }
 
 // BuilderConfig holds configuration for the agent builder
@@ -132,6 +133,7 @@ CRITICAL REQUIREMENTS:
    - "system_message": A comprehensive system prompt defining behavior
    - "emoji": A single emoji that represents the agent's role
    - "description": A brief description of the agent's purpose
+   - "tags": You do not need to provide this field, as tags will be added by the user later
 
 FORMATTING RULES:
 1. NO explanatory text before or after the JSON

@@ -28,6 +28,7 @@ const (
 	colorValue = "\u001b[38;5;255m"    // White for values
 	colorAccent = "\u001b[38;5;208m"   // Orange for accents
 	colorReset = "\u001b[0m"           // Reset color
+	colorGreen = "\u001b[32m"          // Green for success marks
 )
 
 // Animation represents a loading animation
@@ -284,19 +285,17 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 // editAgentFields allows the user to edit agent fields through a light bar menu
 func editAgentFields(agent *AgentSchema) bool {
 	for {
-		// Print a separator before showing the current configuration
-		fmt.Printf("\n%s%s%s\n", colorSection, strings.Repeat("─", 50), colorReset)
-		
-		// Show current configuration
+		// Display current configuration
 		showAgentFields(agent)
 
 		// Prepare menu options
 		options := []menuOption{
-			{label: "Edit Name", value: "name"},
-			{label: "Edit Emoji", value: "emoji"},
-			{label: "Edit Description", value: "description"},
-			{label: "Edit System Message", value: "system"},
-			{label: "Continue to Appearance", value: "continue"},
+			{label: "Continue with these settings", value: "continue"},
+			{label: "Edit name", value: "name"},
+			{label: "Edit emoji", value: "emoji"},
+			{label: "Edit description", value: "description"},
+			{label: "Edit system message", value: "system"},
+			{label: "Edit tags", value: "tags"},
 		}
 
 		// Show menu and get selection
@@ -330,6 +329,29 @@ func editAgentFields(agent *AgentSchema) bool {
 			fmt.Printf("%sCurrent system message:%s\n", colorPrompt, colorReset)
 			fmt.Printf("%s%s%s\n", colorValue, agent.SystemMessage, colorReset)
 			agent.SystemMessage = readMultilineInput(colorPrompt+"New system message (Enter to keep current)"+colorReset, agent.SystemMessage)
+		case "tags":
+			fmt.Printf("\n%s✏️  Edit Tags%s\n", colorSection, colorReset)
+			fmt.Printf("%s═══════════%s\n\n", colorSection, colorReset)
+			
+			// Show current tags
+			if len(agent.Tags) > 0 {
+				fmt.Printf("Current tags: ")
+				for i, tag := range agent.Tags {
+					if i > 0 {
+						fmt.Print(", ")
+					}
+					fmt.Printf("%s%s%s", colorValue, tag, colorReset)
+				}
+				fmt.Println()
+			} else {
+				fmt.Printf("No tags currently assigned.\n")
+			}
+			
+			// Get new tags
+			tags, err := SelectTags(false) // debug mode off for cleaner UI
+			if err == nil {
+				agent.Tags = tags
+			}
 		}
 	}
 }
@@ -429,6 +451,20 @@ func showAgentFields(agent *AgentSchema) {
 	fmt.Printf("\n%s4.%s System Message:\n%s%s%s\n", 
 		colorHighlight, colorReset, 
 		colorValue, agent.SystemMessage, colorReset)
+
+	// Show tags if any are present
+	if len(agent.Tags) > 0 {
+		fmt.Printf("\n%s5.%s Tags:        ", 
+			colorHighlight, colorReset)
+		
+		for i, tag := range agent.Tags {
+			if i > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%s%s%s", colorValue, tag, colorReset)
+		}
+		fmt.Println()
+	}
 }
 
 // HandleBuildCommand processes the build command
@@ -513,6 +549,42 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	// Then select text color, passing the selected label color
 	agent.TextColor = readColorInput("Select text color", defaultTextColor, agent, false, agent.LabelColor)
 
+	// Check if the agent already has valid tags from the editor
+	if len(agent.Tags) >= 1 && len(agent.Tags) <= 5 {
+		// Agent already has valid tags, show them but don't require re-selection
+		fmt.Printf("\n%s4️⃣ Tags%s\n", colorSection, colorReset)
+		fmt.Printf("%sAgent already has the following tags:%s\n", colorPrompt, colorReset)
+		fmt.Println()
+		for _, tag := range agent.Tags {
+			fmt.Printf("%s✓%s %s%s%s\n", 
+				colorGreen, colorReset,
+				colorHighlight, tag, colorReset)
+		}
+	} else {
+		// No valid tags yet, prompt for selection
+		selectedTags, err := SelectTags(h.debug)
+		if err != nil {
+			fmt.Printf("%s⚠️ Warning: Error selecting tags: %v%s\n", 
+				colorAccent, err, colorReset)
+			// Use default tag if there's an error
+			agent.Tags = []string{"general"}
+		} else {
+			agent.Tags = selectedTags
+		}
+
+		// Ensure tags are selected - if empty, don't allow proceeding
+		for len(agent.Tags) == 0 || len(agent.Tags) > 5 {
+			fmt.Printf("\n%s❌ Error: You must select 1-5 tags before continuing.%s\n", 
+				colorAccent, colorReset)
+			selectedTags, err := SelectTags(h.debug)
+			if err != nil {
+				agent.Tags = []string{"general"} // Fallback to default
+				break
+			}
+			agent.Tags = selectedTags
+		}
+	}
+
 	// Preview the agent's appearance
 	fmt.Printf("\n%s👀 Preview%s\n", colorSection, colorReset)
 	fmt.Printf("%s═════════%s\n", colorSection, colorReset)
@@ -532,11 +604,34 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	// Show save options menu
 	fmt.Printf("\n%s💾 Next Steps%s\n", colorSection, colorReset)
 	fmt.Printf("%s═══════════%s\n", colorSection, colorReset)
+	
+	// Validate that tags are set before saving
+	if len(agent.Tags) < 1 || len(agent.Tags) > 5 {
+		fmt.Printf("\n%s⚠️ Warning: You must have 1-5 tags assigned before saving.%s\n", 
+			colorAccent, colorReset)
+		selectedTags, err := SelectTags(h.debug)
+		if err == nil {
+			agent.Tags = selectedTags
+		} else {
+			agent.Tags = []string{"general"} // Fallback
+		}
+	}
+	
 	fmt.Printf("%sAgent will be saved to: %s%s%s\n\n", 
 		colorPrompt, 
 		colorValue, 
 		outputPath,
 		colorReset)
+		
+	// Display the tags as part of save info
+	fmt.Printf("%sTags: %s", colorPrompt, colorReset)
+	for i, tag := range agent.Tags {
+		if i > 0 {
+			fmt.Print(", ")
+		}
+		fmt.Printf("%s%s%s", colorHighlight, tag, colorReset)
+	}
+	fmt.Println("\n")
 
 	options := []menuOption{
 		{label: fmt.Sprintf("💬 Save & Chat with %s%s%s", colorValue, agent.Name, colorReset), value: "chat"},
@@ -637,4 +732,16 @@ func previewAgent(agent AgentSchema) {
 		agent.TextColor, 
 		agent.Name,
 		colorReset)
+		
+	// Display tags if available
+	if len(agent.Tags) > 0 {
+		fmt.Print("\nTags: ")
+		for i, tag := range agent.Tags {
+			if i > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%s%s%s", colorHighlight, tag, colorReset)
+		}
+		fmt.Println()
+	}
 } 
