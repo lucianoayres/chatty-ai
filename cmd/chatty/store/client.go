@@ -24,15 +24,16 @@ func NewClient(debug bool) *Client {
 	}
 }
 
-// FetchIndex retrieves and parses the store index
+// FetchIndex retrieves the store index
 func (c *Client) FetchIndex() (*StoreIndex, error) {
 	if c.debug {
-		fmt.Printf("Fetching store index from: %s\n", GetIndexURL())
+		fmt.Println("Fetching store index from:", GetIndexURL())
 	}
 
+	// Make the HTTP request
 	resp, err := c.httpClient.Get(GetIndexURL())
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch store index: %v", err)
+		return nil, fmt.Errorf("failed to connect to community store: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -40,47 +41,109 @@ func (c *Client) FetchIndex() (*StoreIndex, error) {
 		return nil, fmt.Errorf("failed to fetch store index: HTTP %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read store index: %v", err)
 	}
 
-	if c.debug {
-		fmt.Printf("Received store index (%d bytes)\n", len(data))
-	}
-
+	// Parse the JSON response
 	var index StoreIndex
-	if err := json.Unmarshal(data, &index); err != nil {
+	if err := json.Unmarshal(body, &index); err != nil {
 		return nil, fmt.Errorf("failed to parse store index: %v", err)
 	}
 
 	return &index, nil
 }
 
-// FetchAgent retrieves an agent's YAML file from the store
-func (c *Client) FetchAgent(filename string) ([]byte, error) {
+// FetchStoreConfig retrieves the store configuration
+func (c *Client) FetchStoreConfig() (*StoreConfig, error) {
 	if c.debug {
-		fmt.Printf("Fetching agent YAML from: %s\n", GetAgentURL(filename))
+		fmt.Println("Fetching store configuration from:", GetStoreConfigURL())
 	}
 
-	resp, err := c.httpClient.Get(GetAgentURL(filename))
+	// Make the HTTP request
+	resp, err := c.httpClient.Get(GetStoreConfigURL())
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch agent YAML: %v", err)
+		return nil, fmt.Errorf("failed to connect to community store: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch agent YAML: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to fetch store configuration: HTTP %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read agent YAML: %v", err)
+		return nil, fmt.Errorf("failed to read store configuration: %v", err)
 	}
 
+	// Parse the JSON response
+	var config StoreConfig
+	if err := json.Unmarshal(body, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse store configuration: %v", err)
+	}
+
+	return &config, nil
+}
+
+// FetchTagsConfig retrieves the tags configuration
+func (c *Client) FetchTagsConfig() (*TagsConfig, error) {
 	if c.debug {
-		fmt.Printf("Received agent YAML (%d bytes)\n", len(data))
+		fmt.Println("Fetching tags configuration from:", GetTagsConfigURL())
 	}
 
-	return data, nil
+	// Make the HTTP request
+	resp, err := c.httpClient.Get(GetTagsConfigURL())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to community store: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch tags configuration: HTTP %d", resp.StatusCode)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tags configuration: %v", err)
+	}
+
+	// Parse the JSON response
+	var config TagsConfig
+	if err := json.Unmarshal(body, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse tags configuration: %v", err)
+	}
+
+	return &config, nil
+}
+
+// FetchAgent retrieves an agent's YAML file from the store
+func (c *Client) FetchAgent(filename string) ([]byte, error) {
+	agentURL := GetAgentURL(filename)
+	
+	if c.debug {
+		fmt.Println("Fetching agent from:", agentURL)
+	}
+
+	// Make the HTTP request
+	resp, err := c.httpClient.Get(agentURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to community store: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch agent: HTTP %d", resp.StatusCode)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read agent data: %v", err)
+	}
+
+	return body, nil
 } 

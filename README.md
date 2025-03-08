@@ -104,6 +104,9 @@ Discover and share AI agents with the community:
 ```bash
 # Browse the store
 chatty --store                  # List available community agents
+chatty --store --category "Name" # List agents in a specific category
+chatty --store --tags "tag1,tag2" # List agents with specific tags
+chatty --store --search "query"  # Search for agents by name, description, or tags
 chatty --show "Agent Name"     # View agent details before installing
 
 # Install agents

@@ -1560,6 +1560,9 @@ func main() {
         fmt.Println("  --uninstall <agent_name>      Uninstall a user-defined agent")
         fmt.Println("  --show <agent_name>           Show detailed information about an agent")
         fmt.Println("  --store                       List available agents in store")
+        fmt.Println("  --store --category <n>        List agents in a specific category")
+        fmt.Println("  --store --tags <tag1,tag2>    List agents with specific tags")
+        fmt.Println("  --store --search <query>      Search for agents by name, description, or tags")
         fmt.Println("\nOptions for simple chat mode:")
         fmt.Println("  --save <filename>             Save conversation log to a file")
         fmt.Println("\nNote: The --debug flag can be used with any command to show debug information.")
@@ -2011,8 +2014,60 @@ func main() {
         fmt.Print(agents.ListAgents())
         return
     case "--store":
+        // Parse additional store flags
+        var categoryName string
+        var tagsList string
+        var searchQuery string
+        var flagsProcessed int
+        
+        // Check for --category, --tags, or --search flags
+        for i := 2; i < len(os.Args); i++ {
+            if os.Args[i] == "--category" && i+1 < len(os.Args) {
+                categoryName = os.Args[i+1]
+                flagsProcessed += 2
+                i++ // Skip the next argument (category name)
+            } else if os.Args[i] == "--tags" && i+1 < len(os.Args) {
+                tagsList = os.Args[i+1]
+                flagsProcessed += 2
+                i++ // Skip the next argument (tags list)
+            } else if os.Args[i] == "--search" && i+1 < len(os.Args) {
+                searchQuery = os.Args[i+1]
+                flagsProcessed += 2
+                i++ // Skip the next argument (search query)
+            } else if os.Args[i] == "--debug" {
+                // --debug is already processed
+                flagsProcessed++
+            } else {
+                fmt.Printf("Unknown flag: %s\n", os.Args[i])
+                fmt.Println("\nUsage: chatty --store [--category \"Category Name\"] [--tags \"tag1,tag2\"] [--search \"query\"]")
+                os.Exit(1)
+            }
+        }
+        
+        // Create store handler
         handler := store.NewHandler(debugMode)
-        if err := handler.ListAgents(); err != nil {
+        
+        // Handle based on provided flags
+        var err error
+        
+        switch {
+        case searchQuery != "": // Search has highest priority
+            err = handler.SearchAgents(searchQuery)
+        case categoryName != "": // Then category filter
+            err = handler.ListAgentsByCategory(categoryName)
+        case tagsList != "": // Then tags filter
+            // Split comma-separated tags
+            tags := strings.Split(tagsList, ",")
+            // Trim spaces from tags
+            for i, tag := range tags {
+                tags[i] = strings.TrimSpace(tag)
+            }
+            err = handler.ListAgentsByTags(tags)
+        default: // Default store view
+            err = handler.ListAgents()
+        }
+        
+        if err != nil {
             fmt.Printf("Error: %v\n", err)
             os.Exit(1)
         }
