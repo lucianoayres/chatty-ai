@@ -75,8 +75,8 @@ func FetchTagsConfig(debug bool) (*TagsConfig, error) {
 
 // SelectTags prompts the user to select tags for the agent
 func SelectTags(debug bool) ([]string, error) {
-	// Clear screen before starting
-	fmt.Print("\033[J")
+	// Clear entire screen before starting
+	fmt.Print("\033[H\033[2J")
 	
 	fmt.Printf("\n%s4️⃣ Tag Selection%s\n", colorSection, colorReset)
 	fmt.Printf("%sChoose tags for your agent (1-5 tags required).%s\n", colorPrompt, colorReset)

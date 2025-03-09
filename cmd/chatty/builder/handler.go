@@ -216,7 +216,7 @@ func readKey() ([]byte, error) {
 func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int, error) {
 	currentIndex := defaultIndex
 	
-	// Clear screen from cursor down before starting the menu
+	// Clear screen from current position down
 	fmt.Print("\033[J")
 	
 	// Save initial cursor position - this will be our menu start position
@@ -291,8 +291,8 @@ func showLightBarMenu(title string, options []menuOption, defaultIndex int) (int
 // editAgentFields allows the user to edit agent fields through a light bar menu
 func editAgentFields(agent *AgentSchema) bool {
 	for {
-		// Clear the screen before showing configuration
-		fmt.Print("\033[J")
+		// Clear screen to prevent content duplication
+		fmt.Print("\033[H\033[2J")
 		
 		// Display current configuration
 		showAgentFields(agent)
@@ -373,8 +373,8 @@ func editAgentFields(agent *AgentSchema) bool {
 
 // readColorInput reads a color code using a light bar menu
 func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
-	// Print separator for visual clarity without clearing screen
-	fmt.Printf("\n%s%s%s\n", colorSection, strings.Repeat("─", 50), colorReset)
+	// Clear screen to prevent content duplication
+	fmt.Print("\033[H\033[2J")
 	
 	type colorOption struct {
 		name string
@@ -638,6 +638,12 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 			agent.Tags = []string{"general"} // Fallback
 		}
 	}
+	
+	// Clear the screen completely before showing the final menu
+	fmt.Print("\033[H\033[2J")
+	
+	fmt.Printf("\n%s💾 Next Steps%s\n", colorSection, colorReset)
+	fmt.Printf("%s═══════════%s\n", colorSection, colorReset)
 	
 	fmt.Printf("%sAgent will be saved to: %s%s%s\n\n", 
 		colorPrompt, 
