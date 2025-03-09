@@ -331,12 +331,24 @@ chatty --show "Ada"       # View Ada's configuration
 
 ### 📝 Configuration
 
-Your settings live in `~/.chatty/config.json`:
+Your settings live in `~/.chatty/config.json`. Chatty is highly customizable through this configuration file. For a reference example, see the [config.sample.json](config.sample.json) file included in the repository.
 
-- Default agent
-- Language preferences
-- Model settings
-- System directives
+You can customize:
+
+- **Default Agent**: Set your preferred AI personality as the default
+- **Language Preferences**: Choose your preferred language for interactions
+- **Model Settings**: Configure which AI model to use (e.g., llama3.2)
+- **System Directives**: Fine-tune how agents behave with custom guidelines:
+  - `base_guidelines`: General behavior instructions for all agents
+  - `interactive_guidelines`: How agents behave in direct conversations
+  - `autonomous_guidelines`: How agents behave in autonomous mode
+
+To modify your configuration:
+
+```bash
+# Edit configuration manually
+nano ~/.chatty/config.json
+```
 
 ## 🔍 Troubleshooting
 
