@@ -52,6 +52,9 @@ git clone https://github.com/chatty-ai/chatty.git
 # Install Chatty
 sudo cp bin/chatty /usr/local/bin
 
+# Ensure the binary is executable (if needed)
+sudo chmod +x /usr/local/bin/chatty
+
 # Initialize (required for first use)
 chatty init
 ```
@@ -124,6 +127,8 @@ chatty --share "Agent Name"    # Share your custom agent with the community
 2. Test and refine your agent
 3. Share with the community using `--share`
 4. Your agent will be submitted to the Community Store for others to enjoy!
+
+Visit the [Chatty AI Community Store](https://github.com/lucianoayres/chatty-ai-community-store) to explore the full collection of community-created agents and learn more about agent configuration standards.
 
 ### 🎭 Pre-built Agents
 
@@ -291,7 +296,7 @@ All agents (built-in, sample, or AI-generated) use this YAML structure:
 ```yaml
 # ~/.chatty/agents/einstein.yaml
 name: "Albert Einstein"
-emoji: "🎯"
+emoji: "🧠"
 description: "Renowned physicist and Nobel laureate, known for the theory of relativity and revolutionary contributions to quantum mechanics"
 system_message: |
   You are Albert Einstein, the renowned theoretical physicist and one of history's greatest scientific minds. 
@@ -321,6 +326,7 @@ system_message: |
 
 label_color: "\u001b[38;5;75m" # Light blue for name
 text_color: "\u001b[38;5;252m" # Light gray for messages
+tags: ["science", "physics", "historical", "genius"] # Categorization tags
 is_default: false # Not the default agent
 ```
 
