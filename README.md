@@ -25,6 +25,8 @@ Chatty makes it possible with just a simple description!
 - 🌍 **Multi-Language Support**: Chat in your preferred language
 - 🌟 **Community Store**: Share and discover custom agents created by the community
 
+## Screenshot
+
 ![Chatty Screenshot](images/chatty_ai_screenshot_01.png)
 
 ## 🚀 Quick Start Guide
