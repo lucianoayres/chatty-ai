@@ -193,8 +193,13 @@ func (b *Builder) BuildAgent(description string) (*AgentSchema, error) {
 	}
 
 	// Only validate the fields we expect from the LLM
-	if agent.Name == "" || agent.SystemMessage == "" || agent.Emoji == "" || agent.Description == "" {
-		return nil, fmt.Errorf("LLM response is missing required fields (name, system_message, emoji, or description)")
+	if agent.Name == "" || agent.SystemMessage == "" || agent.Description == "" {
+		return nil, fmt.Errorf("the AI needs more details to create your agent")
+	}
+
+	// If the emoji is not set, set it to a default value
+	if agent.Emoji == "" {
+		agent.Emoji = "🤖"
 	}
 
 	// Initialize the remaining fields with empty values

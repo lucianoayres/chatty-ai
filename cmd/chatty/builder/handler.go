@@ -29,6 +29,7 @@ const (
 	colorAccent = "\u001b[38;5;208m"   // Orange for accents
 	colorReset = "\u001b[0m"           // Reset color
 	colorGreen = "\u001b[32m"          // Green for success marks
+	colorRed = "\u001b[31m"            // Red for error messages
 )
 
 // Animation represents a loading animation
@@ -70,7 +71,6 @@ func startAnimation() *Animation {
 		frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 		frameIndex := 0
 		currentMessage := ""
-		prefix := colorAccent + frames[0] + " " + colorReset
 		
 		// Create a shuffled list of indices for random selection
 		messageIndices := make([]int, len(messages))
@@ -95,7 +95,7 @@ func startAnimation() *Animation {
 				return
 			default:
 				// Update the prefix with current frame
-				prefix = colorAccent + frames[frameIndex] + " " + colorReset
+				prefix := colorAccent + frames[frameIndex] + " " + colorReset
 				frameIndex = (frameIndex + 1) % len(frames)
 				
 				// Change message every 15 seconds
@@ -372,7 +372,7 @@ func editAgentFields(agent *AgentSchema) bool {
 }
 
 // readColorInput reads a color code using a light bar menu
-func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
+func readColorInput(defaultValue string, agent *AgentSchema, isLabelColor bool, selectedLabelColor string) string {
 	// Clear screen to prevent content duplication
 	fmt.Print("\033[H\033[2J")
 	
@@ -439,11 +439,6 @@ func readColorInput(prompt string, defaultValue string, agent *AgentSchema, isLa
 	}
 
 	return menuOptions[selected].value
-}
-
-// showColorExamples displays example ANSI colors
-func showColorExamples() {
-	// This function is no longer needed as color examples are shown in readColorInput
 }
 
 // showAgentFields displays the current agent configuration
@@ -543,6 +538,31 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 		if h.debug {
 			fmt.Printf("\n%s❌ Debug Mode: All attempts failed:%s\n%v\n", colorAccent, colorReset, err)
 		}
+		
+		// Check if the error is about needing more details
+		if strings.Contains(err.Error(), "needs more details") {
+			// Clear screen for better presentation
+			fmt.Print("\033[H\033[2J")
+			
+			// Display a user-friendly, formatted message
+			fmt.Printf("\n%s✨ The AI needs more details to create your agent! ✨%s\n\n", 
+				colorSection, colorReset)
+			
+			fmt.Printf("%sTry again with a more specific instruction. For example:%s\n", 
+				colorPrompt, colorReset)
+			
+			fmt.Printf("  %sInstead of: \"Voltaire\"%s\n", 
+				colorRed, colorReset)
+			
+			fmt.Printf("  %sTry: \"Voltaire, French writer and philosopher from the Age of Enlightenment\"%s\n\n", 
+				colorGreen, colorReset)
+			
+			fmt.Printf("%sMore details help the AI understand exactly what kind of agent you want to create.%s\n\n", 
+				colorPrompt, colorReset)
+			
+			return nil
+		}
+		
 		return fmt.Errorf("failed to build agent after %d attempts: %v", maxRetries, err)
 	}
 
@@ -566,10 +586,10 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 	fmt.Printf("%sChoose colors for your agent's appearance in the chat.%s\n", colorPrompt, colorReset)
 	
 	// First select label color
-	agent.LabelColor = readColorInput("Select label color", defaultLabelColor, agent, true, "")
+	agent.LabelColor = readColorInput(defaultLabelColor, agent, true, "")
 	
 	// Then select text color, passing the selected label color
-	agent.TextColor = readColorInput("Select text color", defaultTextColor, agent, false, agent.LabelColor)
+	agent.TextColor = readColorInput(defaultTextColor, agent, false, agent.LabelColor)
 
 	// Check if the agent already has valid tags from the editor
 	if len(agent.Tags) >= 1 && len(agent.Tags) <= 5 {
@@ -659,7 +679,7 @@ func (h *Handler) HandleBuildCommand(args []string) error {
 		}
 		fmt.Printf("%s%s%s", colorHighlight, tag, colorReset)
 	}
-	fmt.Println("\n")
+	fmt.Println()
 
 	options := []menuOption{
 		{label: fmt.Sprintf("💬 Save & Chat with %s%s%s", colorValue, agent.Name, colorReset), value: "chat"},
