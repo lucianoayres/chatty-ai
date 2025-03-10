@@ -675,9 +675,6 @@ func handleMultiAgentConversation(config ConversationConfig) error {
     turnEmoji := "🔄"
     converseMargin := 1
 
-    // We don't need to print the welcome message and participants list here
-    // as it's already printed in the main function before calling this function
-
     currentMessage := config.Starter
     currentTurn := 1
     firstMessage := true
